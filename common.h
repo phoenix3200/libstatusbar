@@ -51,3 +51,25 @@ struct StatusBarData
 };
 */
 
+/*	ClassNameComponent	indicatorName	priority	leftOrder	rightOrder	canBeEnabledForData
+0	Time								15			0			0
+1	Lock				Lock			15			0			0
+2	AirplaneMode		Airplane		15			1			0
+3	SignalStrength						15			2			0
+4	Service								15			3			0
+5	DataNetwork							12			4			0
+6	Battery								15			0			1
+7	BatteryPercent						1			0			2
+8	BluetoothBattery					2			0			3
+9	Bluetooth							10			0			4
+10	Indicator			TTY				13			0			6
+11	Indicator			Alarm			8			0			7
+12	Indicator			Plus			5			0			8
+13	Indicator			Play			6			0			9
+14	Indicator			Location		7			0			11
+15	Indicator			RotationLock	11			0			12
+16	Indicator			VPN				3			7			10
+17	Indicator			CallForward		4			6			13
+18	Activity							9			0			14			_UIStatusBarActivityItemCanBeEnabled
+19	ThermalColor						0			5			5
+*/

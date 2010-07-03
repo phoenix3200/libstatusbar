@@ -1,5 +1,5 @@
 
-#define TESTING
+//#define TESTING
 
 #import "common.h"
 #import "defines.h"
@@ -65,19 +65,27 @@ StatusBarItemClient* sharedItemClient;
 	
 	int keyidx = 22;
 	
+//	NSDesc(processedMessage);
+	
 	for(int i=0; i<3; i++)
 	{
 		extern NSMutableArray* customItems[3];
 		if(customItems[i])
 		{
-			for(UIStatusBarCustomItem* item in customItems[i])
+			NSDesc(customItems[i]);
+			int cnt = [customItems[i] count]-1;
+			for(; cnt>= 0; cnt--)
+//			for(UIStatusBarCustomItem* item in customItems[i])
 			{
+				UIStatusBarCustomItem* item = [customItems[i] objectAtIndex: cnt];
+			
 				NSString* indicatorName = [item indicatorName];
 				if(processedMessage==nil || [processedMessage objectForKey: indicatorName] == nil)
 				{
 					NSLog(@"removing item: %@", indicatorName);
 					[item removeAllViews];
-					[customItems[i] removeObject: item];
+					[customItems[i] removeObjectAtIndex: cnt];
+//					[customItems[i] removeObject: item];
 				}
 				else
 				{
@@ -86,7 +94,7 @@ StatusBarItemClient* sharedItemClient;
 					int &type(MSHookIvar<int>(item, "_type"));
 					if(type > keyidx)
 						keyidx = type;
-						
+					
 				}
 			}
 		}
