@@ -59,8 +59,10 @@ StatusBarItemClient* sharedItemClient;
 	NSDesc(_currentMessage);
 }
 
-- (void) processCurrentMessage
+- (bool) processCurrentMessage
 {
+	bool ret = NO;
+	
 	NSMutableDictionary *processedMessage = [_currentMessage mutableCopy];
 	
 	int keyidx = 22;
@@ -82,6 +84,8 @@ StatusBarItemClient* sharedItemClient;
 				NSString* indicatorName = [item indicatorName];
 				if(processedMessage==nil || [processedMessage objectForKey: indicatorName] == nil)
 				{
+					ret = YES;
+					
 					NSLog(@"removing item: %@", indicatorName);
 					[item removeAllViews];
 					[customItems[i] removeObjectAtIndex: cnt];
@@ -108,16 +112,18 @@ StatusBarItemClient* sharedItemClient;
 	
 	keyidx++;
 	
-	if(processedMessage)
+	if(processedMessage && [processedMessage count])
 	{
+		ret = YES;
 		GETCLASS(UIStatusBarItem);
 		for(NSString* key in processedMessage)
-		//NSString* key = @"Pause";
 		{
 			NSLog(@"adding item: %@", key);
 			[[$UIStatusBarItem itemWithType: keyidx++] setIndicatorName: key];
 		}
 	}
+	NSLog(@"processCurrentMessage? %@", ret ? @"YES" : @"NO");
+	return ret;
 }
 
 - (void) updateStatusBar
@@ -125,10 +131,9 @@ StatusBarItemClient* sharedItemClient;
 	SelLog();
 	
 	[self retrieveCurrentMessage];
-	[self processCurrentMessage];
 	
-	// need a decent guard band because we call updateStatusBar before UIApp exists
-	if(UIApp)
+	// need a decent guard band because we do call before UIApp exists
+	if([self processCurrentMessage] && UIApp)
 	{
 		UIStatusBarForegroundView* _foregroundView = MSHookIvar<UIStatusBarForegroundView*>([UIApp statusBar], "_foregroundView");
 		if(_foregroundView)

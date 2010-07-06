@@ -3,7 +3,7 @@ libstatusbar_OBJCC_FILES = libstatusbar.mm Classes.mm \
  							StatusBarItemClient.mm StatusBarItemServer.mm \
 							UIStatusBarCustomItem.mm UIStatusBarCustomItemView.mm
 libstatusbar_FRAMEWORKS = UIKit
-libstatusbar_PRIVATE_FRAMEWORKS = AppSupport
+libstatusbar_PRIVATE_FRAMEWORKS = AppSupport SpringboardServices
 
 
 #SYSROOT = /Wildcat7B367.dyld_cache

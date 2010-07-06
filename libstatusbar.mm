@@ -251,14 +251,66 @@ void removeBT()
 }
 */
 
+HOOKDEF(void, UIApplication, _startWindowServerIfNecessary)
+{
+	HookLog();
+	CALL_ORIG(UIApplication, _startWindowServerIfNecessary);
+	
+	// use this only for starting client
+	// register as client - make sure SpringBoard is running
+	// UIKit should still not exist.../yet/
+	if($SpringBoard || SBSSpringBoardServerPort())
+	{
+		[StatusBarItemClient sharedInstance];
+	}
+	NSLine();
+	
+	// testing stuff...
+	/*
+	{
+		float delay = 4.0f;
+		CFRunLoopTimerCallBack callback = (CFRunLoopTimerCallBack) addBT;
+		
+		CFRunLoopTimerRef waitTimer = CFRunLoopTimerCreate(kCFAllocatorDefault, CFAbsoluteTimeGetCurrent()+delay, 0.0f, 0, 0, callback, NULL);
+		CFRunLoopAddTimer(CFRunLoopGetMain(), waitTimer, kCFRunLoopCommonModes);
+	}
+	{
+		float delay = 8.0f;
+		CFRunLoopTimerCallBack callback = (CFRunLoopTimerCallBack) addPause;
+		
+		
+		CFRunLoopTimerRef waitTimer = CFRunLoopTimerCreate(kCFAllocatorDefault, CFAbsoluteTimeGetCurrent()+delay, 0.0f, 0, 0, callback, NULL);
+		CFRunLoopAddTimer(CFRunLoopGetMain(), waitTimer, kCFRunLoopCommonModes);
+	}
+	
+	{
+		float delay = 12.0f;
+		CFRunLoopTimerCallBack callback = (CFRunLoopTimerCallBack) removeBT;
+		
+		
+		CFRunLoopTimerRef waitTimer = CFRunLoopTimerCreate(kCFAllocatorDefault, CFAbsoluteTimeGetCurrent()+delay, 0.0f, 0, 0, callback, NULL);
+		CFRunLoopAddTimer(CFRunLoopGetMain(), waitTimer, kCFRunLoopCommonModes);
+	}
+	{
+		float delay = 16.0f;
+		CFRunLoopTimerCallBack callback = (CFRunLoopTimerCallBack) addBT;
+		
+		
+		CFRunLoopTimerRef waitTimer = CFRunLoopTimerCreate(kCFAllocatorDefault, CFAbsoluteTimeGetCurrent()+delay, 0.0f, 0, 0, callback, NULL);
+		CFRunLoopAddTimer(CFRunLoopGetMain(), waitTimer, kCFRunLoopCommonModes);
+	}
+	*/
+}
+
+
 __attribute__((constructor)) void start()
 {
 	NSLine();
 	
-	[[NSAutoreleasePool alloc] init];
-	
 	// get classes
 	Classes_Fetch();
+	
+	[[NSAutoreleasePool alloc] init];
 	
 	// we only hook UIKit apps - used as a guard band
 	if($UIStatusBarItem)
@@ -283,52 +335,16 @@ __attribute__((constructor)) void start()
 			HOOKMESSAGE(UIApplication, addStatusBarImageNamed:removeOnExit:, addStatusBarImageNamed$removeOnExit$);
 			HOOKMESSAGE(UIApplication, addStatusBarImageNamed:, addStatusBarImageNamed$);
 			HOOKMESSAGE(UIApplication, removeStatusBarImageNamed:, removeStatusBarImageNamed$);
+			HOOKMESSAGE(UIApplication, _startWindowServerIfNecessary, _startWindowServerIfNecessary);
 		}
 		
 		if($SpringBoard)
 		{
 			[StatusBarItemServer sharedInstance];
 		}
-		// register as client
-		[StatusBarItemClient sharedInstance];
-		
-		// testing stuff...timers used because we are doing this before UIKit has been initialized
-		/*
-		{
-			float delay = 4.0f;
-			CFRunLoopTimerCallBack callback = (CFRunLoopTimerCallBack) addBT;
-			
-			CFRunLoopTimerRef waitTimer = CFRunLoopTimerCreate(kCFAllocatorDefault, CFAbsoluteTimeGetCurrent()+delay, 0.0f, 0, 0, callback, NULL);
-			CFRunLoopAddTimer(CFRunLoopGetMain(), waitTimer, kCFRunLoopCommonModes);
-		}
-		{
-			float delay = 8.0f;
-			CFRunLoopTimerCallBack callback = (CFRunLoopTimerCallBack) addPause;
-			
-			
-			CFRunLoopTimerRef waitTimer = CFRunLoopTimerCreate(kCFAllocatorDefault, CFAbsoluteTimeGetCurrent()+delay, 0.0f, 0, 0, callback, NULL);
-			CFRunLoopAddTimer(CFRunLoopGetMain(), waitTimer, kCFRunLoopCommonModes);
-		}
-		
-		{
-			float delay = 12.0f;
-			CFRunLoopTimerCallBack callback = (CFRunLoopTimerCallBack) removeBT;
-			
-			
-			CFRunLoopTimerRef waitTimer = CFRunLoopTimerCreate(kCFAllocatorDefault, CFAbsoluteTimeGetCurrent()+delay, 0.0f, 0, 0, callback, NULL);
-			CFRunLoopAddTimer(CFRunLoopGetMain(), waitTimer, kCFRunLoopCommonModes);
-		}
-		{
-			float delay = 16.0f;
-			CFRunLoopTimerCallBack callback = (CFRunLoopTimerCallBack) addBT;
-			
-			
-			CFRunLoopTimerRef waitTimer = CFRunLoopTimerCreate(kCFAllocatorDefault, CFAbsoluteTimeGetCurrent()+delay, 0.0f, 0, 0, callback, NULL);
-			CFRunLoopAddTimer(CFRunLoopGetMain(), waitTimer, kCFRunLoopCommonModes);
-		}
-		*/
 		
 		NSLine();
+		
 	}
 }
 

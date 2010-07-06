@@ -10,7 +10,7 @@
 - (id) init;
 
 - (void) retrieveCurrentMessage;
-- (void) processCurrentMessage;
+- (bool) processCurrentMessage;
 - (void) updateStatusBar;
 
 - (void) setProperties: (id) properties forItem: (NSString*) item;

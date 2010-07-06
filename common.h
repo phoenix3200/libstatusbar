@@ -10,6 +10,7 @@ extern "C" UIApplication* UIApp;
 + (UIImage*) kitImageNamed: (NSString*) name;
 @end
 
+extern "C" int SBSSpringBoardServerPort();
 
 #import <objc/message.h>
 #import <substrate.h>
