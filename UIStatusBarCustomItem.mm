@@ -5,11 +5,13 @@
 #import "classes.h"
 #import "UIStatusBarCustomItem.h"
 
+static int _type = 22;
+
 //Class $UIStatusBarCustomItem;
 
 int UIStatusBarCustomItem$type(UIStatusBarCustomItem* self, SEL sel)
 {
-	return 0;
+	return _type++;
 }
 
 int UIStatusBarCustomItem$leftOrder(UIStatusBarCustomItem* self, SEL sel)
