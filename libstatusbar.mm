@@ -7,67 +7,34 @@
 #import "classes.h"
 #import "UIStatusBarCustomItem.h"
 #import "UIStatusBarCustomItemView.h"
-#import "StatusBarItemServer.h"
-#import "StatusBarItemClient.h"
+#import "LSStatusBarServer.h"
+#import "LSStatusBarClient.h"
+
+
+#import "LSStatusBarItem.h"
 
 
 NSMutableArray* customItems[3];	 // left, right, center
 
 
-// called by
-//  (void) [UIStatusBarLayoutManager* prepareEnabledItems: (BOOL[20]) itemIsEnabled];
-//  (void) [UIStatusBarForegroundView* _reflowItemViewsWithDuration: (double) dur suppressCenterAnimation: (BOOL) suppress];
+#pragma mark UIStatusBar* Hooks
+
 HOOKDEF(id, UIStatusBarItem, itemWithType$, int type)
 {
-//	HookLog();
-	
 	id ret = CALL_ORIG(UIStatusBarItem, itemWithType$, type);
+	
+	// construct our own custom item
 	if(ret==nil)
 	{
-		NSLog(@"type = %d", type);
 		ret = [[$UIStatusBarCustomItem alloc] initWithType: type];
-		if([ret leftOrder])
-		{
-			if(!customItems[0])
-			{
-				customItems[0] = [[NSMutableArray alloc] init];
-			}
-			[customItems[0] addObject: ret];
-		}
-		else if([ret rightOrder])
-		{
-			if(!customItems[1])
-			{
-				customItems[1] = [[NSMutableArray alloc] init];
-			}
-			[customItems[1] addObject: ret];
-		}
-		else
-		{
-			if(!customItems[2])
-			{
-				customItems[2] = [[NSMutableArray alloc] init];
-			}
-			[customItems[2] addObject: ret];
-		}
-		NSType(ret);
-		
-		// now let's get to work
 	}
 	return ret;
 }
 
-// May return NO if a callback function (designated separately) exists + refuses to show
-// called by
-//  (void) [UIStatusBarForegroundView setStatusBarData: (StatusBarData*) data actions: (int) actions animated: (BOOL) animated];
-/*
-HOOKDEF(BOOL, UIStatusBarItem, itemType$canBeEnabledForData$, int type, StatusBarData* data)
-{
-//	HookLog();
-	BOOL ret = CALL_ORIG(UIStatusBarItem, itemType$canBeEnabledForData$, type, data);
-	return ret;
-}
-*/
+
+@interface UIStatusBarItemView (extraSelector)
++ (UIStatusBarItemView*) createViewForItem: (UIStatusBarItem*) item withData: (void*) data actions: (int) actions foregroundStyle: (int) style;
+@end
 
 UIStatusBarItemView* InitializeView(UIStatusBarLayoutManager* self, id item)
 {
@@ -78,37 +45,42 @@ UIStatusBarItemView* InitializeView(UIStatusBarLayoutManager* self, id item)
 		return _view;
 	}
 	
-	GETCLASS(UIStatusBarItemView);
-	
 	GETVAR(UIStatusBarForegroundView*, _foregroundView);
 	int foregroundStyle = [_foregroundView foregroundStyle];
 	
-	NSLog(@"foregroundStyle = %d", foregroundStyle);
 	
-	_view = [$UIStatusBarItemView createViewForItem: item foregroundStyle: foregroundStyle];
+	if([$UIStatusBarItemView respondsToSelector: @selector(createViewForItem:foregroundStyle:)])
+	{
+		_view = [$UIStatusBarItemView createViewForItem: item foregroundStyle: foregroundStyle];
+	}
+	else if([$UIStatusBarItemView respondsToSelector: @selector(createViewForItem:withData:actions:foregroundStyle:)])
+	{
+		_view = [$UIStatusBarItemView createViewForItem: item withData: nil actions: 0 foregroundStyle: foregroundStyle];
+	}
+	
 	[_view setLayoutManager: self];
 
 	GETVAR(int, _region);
 	switch(_region)
 	{
-	case 0:
-	{
-		[_view setContentMode: UIViewContentModeLeft];
-		[_view setAutoresizingMask: UIViewAutoresizingFlexibleBottomMargin | UIViewAutoresizingFlexibleRightMargin];
-		break;
-	}
-	case 1:
-	{
-		[_view setContentMode: UIViewContentModeRight];
-		[_view setAutoresizingMask: UIViewAutoresizingFlexibleBottomMargin | UIViewAutoresizingFlexibleLeftMargin];
-		break;
-	}
-	case 2:
-	{
-		[_view setContentMode: UIViewContentModeLeft];
-		[_view setAutoresizingMask: UIViewAutoresizingFlexibleBottomMargin | UIViewAutoresizingFlexibleRightMargin | UIViewAutoresizingFlexibleLeftMargin]; // 0x25
-		break;
-	}
+		case 0:
+		{
+			[_view setContentMode: UIViewContentModeLeft];
+			[_view setAutoresizingMask: UIViewAutoresizingFlexibleBottomMargin | UIViewAutoresizingFlexibleRightMargin];
+			break;
+		}
+		case 1:
+		{
+			[_view setContentMode: UIViewContentModeRight];
+			[_view setAutoresizingMask: UIViewAutoresizingFlexibleBottomMargin | UIViewAutoresizingFlexibleLeftMargin];
+			break;
+		}
+		case 2:
+		{
+			[_view setContentMode: UIViewContentModeLeft];
+			[_view setAutoresizingMask: UIViewAutoresizingFlexibleBottomMargin | UIViewAutoresizingFlexibleRightMargin | UIViewAutoresizingFlexibleLeftMargin]; // 0x25
+			break;
+		}
 	}
 	
 	[item setView: _view forManager: self];
@@ -118,14 +90,17 @@ UIStatusBarItemView* InitializeView(UIStatusBarLayoutManager* self, id item)
 
 HOOKDEF(void, UIStatusBarForegroundView, _computeVisibleItems$eitherSideItems$, NSMutableArray** visibleItems,  NSMutableArray* eitherSideItems) // 3 visible items
 {
-//	HookLog();
-	
+
 	// add our objects to the appropriate arrays
-	for(int i=0; i<3; i++)
+	for(int i=0; i<2; i++) // only left+right - center is "virtual"
 	{
 		for(UIStatusBarCustomItem* item in customItems[i])
 		{
-			[visibleItems[i] addObject: item];
+			NSNumber* visible = [[item properties] objectForKey: @"visible"];
+			if(!visible || [visible boolValue])
+			{
+				[visibleItems[i] addObject: item];
+			}
 		}
 	}
 	
@@ -135,8 +110,6 @@ HOOKDEF(void, UIStatusBarForegroundView, _computeVisibleItems$eitherSideItems$, 
 
 HOOKDEF(UIView*, UIStatusBarLayoutManager, _viewForItem$creatingIfNecessary$, id item, bool ifNecc)
 {
-//	HookLog();
-	
 	if([item isKindOfClass: $UIStatusBarCustomItem])
 	{
 		UIStatusBarItemView* _view = InitializeView(self, item);
@@ -144,16 +117,29 @@ HOOKDEF(UIView*, UIStatusBarLayoutManager, _viewForItem$creatingIfNecessary$, id
 	}
 	else
 	{
-		id ret = CALL_ORIG(UIStatusBarLayoutManager, _viewForItem$creatingIfNecessary$, item, ifNecc);
+		UIView* ret = CALL_ORIG(UIStatusBarLayoutManager, _viewForItem$creatingIfNecessary$, item, ifNecc);
+		return ret;
+	}
+}
+
+HOOKDEF(UIView*, UIStatusBarLayoutManager, _viewForItem$, id item)
+{
+	if([item isKindOfClass: $UIStatusBarCustomItem])
+	{
+		UIStatusBarItemView* _view = InitializeView(self, item);
+		return _view;
+	}
+	else
+	{
+		UIView* ret = CALL_ORIG(UIStatusBarLayoutManager, _viewForItem$, item);
 		return ret;
 	}
 }
 
 
+
 HOOKDEF(NSMutableArray*, UIStatusBarLayoutManager, _itemViews)
 {
-//	HookLog();
-	
 	NSMutableArray* _itemViews = CALL_ORIG(UIStatusBarLayoutManager, _itemViews);
 	
 	// add our array here
@@ -165,9 +151,10 @@ HOOKDEF(NSMutableArray*, UIStatusBarLayoutManager, _itemViews)
 			for(UIStatusBarCustomItem* item in customItems[_region])
 			{
 				UIStatusBarItemView* _view = InitializeView(self, item);
-				
 				if(_view)
+				{
 					[_itemViews addObject: _view];
+				}
 			}
 		}
 	}
@@ -177,6 +164,27 @@ HOOKDEF(NSMutableArray*, UIStatusBarLayoutManager, _itemViews)
 
 
 
+void PrepareEnabledItemsCommon(UIStatusBarLayoutManager* self)
+{
+	GETVAR(UIStatusBarForegroundView*, _foregroundView);
+	
+	float startPosition = [self _startPosition];
+	for(UIStatusBarItemView* view in [self _itemViewsSortedForLayout])
+	{
+		if([view superview] == nil)
+		{
+			[view setVisible: NO];
+			[view setFrame: (CGRect) {{0.0f, 0.0f}, [self _frameForItemView: view startPosition: startPosition].size}];
+			[_foregroundView addSubview: view];
+		}
+		int type = [[view item] type];
+		if(type)
+		{
+			startPosition = [self _positionAfterPlacingItemView: view startPosition: startPosition];
+		}
+	}
+}
+
 HOOKDEF(BOOL, UIStatusBarLayoutManager, prepareEnabledItems$, BOOL* items)
 {
 	SelLog();
@@ -185,123 +193,160 @@ HOOKDEF(BOOL, UIStatusBarLayoutManager, prepareEnabledItems$, BOOL* items)
 	// the default function didn't refresh...let's refresh anyways
 	if(ret==NO)
 	{
-		
-		GETVAR(UIStatusBarForegroundView*, _foregroundView);
-		
-		float startPosition = [self _startPosition];
-		for(UIStatusBarItemView* view in [self _itemViewsSortedForLayout])
-		{
-			if([view superview] == nil)
-			{
-				[view setVisible: NO];
-				[view setFrame: (CGRect) {{0.0f, 0.0f}, [self _frameForItemView: view startPosition: startPosition].size}];
-				[_foregroundView addSubview: view];
-			}
-			int type = [[view item] type];
-			if(type)
-			{
-				startPosition = [self _positionAfterPlacingItemView: view startPosition: startPosition];
-			}
-		}
+		PrepareEnabledItemsCommon(self);
 	}
 	return YES;
 }
 
-
-
-HOOKDEF(void, UIApplication, addStatusBarImageNamed$removeOnExit$, NSString* name, BOOL removeOnExit)
+HOOKDEF(BOOL, UIStatusBarLayoutManager, prepareEnabledItems$withData$actions$, BOOL* items, void* data, int actions)
 {
-//	HookLog();
-	[[StatusBarItemClient sharedInstance] setProperties: [NSNumber numberWithInt: 1] forItem: name];
-}
-
-HOOKDEF(void, UIApplication, addStatusBarImageNamed$, NSString* name)
-{
-//	HookLog();
-	[[StatusBarItemClient sharedInstance] setProperties: [NSNumber numberWithInt: 1] forItem: name];
-}
-
-HOOKDEF(void, UIApplication, removeStatusBarImageNamed$, NSString* name)
-{
-//	HookLog();
-	[[StatusBarItemClient sharedInstance] setProperties: nil forItem: name];
+	SelLog();
+	BOOL ret = CALL_ORIG(UIStatusBarLayoutManager, prepareEnabledItems$withData$actions$, items, data, actions);
+	
+	// the default function didn't refresh...let's refresh anyways
+	if(ret==NO)
+	{
+		PrepareEnabledItemsCommon(self);
+	}
+	return YES;
+	
 }
 
 
-// used for testing only
+
+#pragma mark UIStatusBarTimeItemView modifications (for center text)
+
+HOOKDEF(BOOL, UIStatusBarTimeItemView, updateForNewData$actions$, void* data, int actions)
+{
+	NSString* &_timeString(MSHookIvar<NSString*>(self, "_timeString"));
+	NSString* oldString = [_timeString retain];
+	
+	// retrieve the current string index
+	int idx;
+	{
+		uint64_t value;
+		const char* notif = "libstatusbar_changed";
+		int token = 0;
+		notify_register_check(notif, &token);
+		notify_get_state(token, &value);
+		
+		idx = value;
+	}
+	
+	// Fetch the current string
+	_timeString = [[[LSStatusBarClient sharedInstance] titleStringAtIndex: idx] retain];
+	
+	// I guess not.  Fetch the default string
+	if(!_timeString)
+	{
+		CALL_ORIG(UIStatusBarTimeItemView, updateForNewData$actions$, data, actions);
+	}
+	
+	// Did the string change?
+	bool isSame = [oldString isEqualToString: _timeString];
+	[oldString release];
+	return !isSame;
+}
+
 /*
-void addPause()
-{
-	[UIApp addStatusBarImageNamed: @"Pause"];
-}
-
-void removePause()
-{
-	[UIApp removeStatusBarImageNamed: @"Pause"];
-}
-
-void addBT()
-{
-	[UIApp addStatusBarImageNamed: @"Bluetooth"];
-}
-
-void removeBT()
-{
-	[UIApp removeStatusBarImageNamed: @"Bluetooth"];
-}
+@interface UIStatusBar : NSObject
+- (CGRect) currentFrame;
+@end
 */
+
+HOOKDEF(UIImage*, UIStatusBarTimeItemView, contentsImageForStyle$, int style)
+{
+	NSString* &_timeString(MSHookIvar<NSString*>(self, "_timeString"));
+
+	NSMutableString* timeString = [_timeString mutableCopy];
+	
+	CGSize size = [(UIStatusBar*)[UIApp statusBar] currentFrame].size;
+	float maxlen = (size.width > size.height ? size.width : size.height)*0.65;
+	
+	// ellipsize strings if they're too long
+	if([timeString sizeWithFont: (UIFont*) [self textFont]].width > maxlen)
+	{
+		[timeString replaceCharactersInRange: (NSRange){[timeString length]-1, 1} withString: @"…"];
+		while([timeString length]>3 && [timeString sizeWithFont: (UIFont*) [self textFont]].width > maxlen)
+		{
+			[timeString replaceCharactersInRange: (NSRange){[timeString length]-2, 1} withString: @""];
+		}
+	}
+	
+	// string swap
+	NSString* oldTimeString = _timeString;
+	_timeString = [timeString retain]; // neccessary ?
+	
+	UIImage* ret = CALL_ORIG(UIStatusBarTimeItemView, contentsImageForStyle$, style);
+	
+	// string swap
+	_timeString = oldTimeString;
+	[timeString release];
+	
+	return ret;
+}
+
+
+#pragma mark Client startup
 
 HOOKDEF(void, UIApplication, _startWindowServerIfNecessary)
 {
 	HookLog();
 	CALL_ORIG(UIApplication, _startWindowServerIfNecessary);
 	
+	static BOOL hasAlreadyRan = NO;
+	if(hasAlreadyRan)
+	{
+		NSLog(@"Warning: _startWindowServerIfNecessary called twice!");
+		return;
+	}
+	hasAlreadyRan = YES;
+	
 	// use this only for starting client
 	// register as client - make sure SpringBoard is running
 	// UIKit should still not exist.../yet/
 	if($SpringBoard || SBSSpringBoardServerPort())
 	{
-		[StatusBarItemClient sharedInstance];
+		[LSStatusBarClient sharedInstance];
 	}
 	NSLine();
-	
-	// testing stuff...
-	/*
-	{
-		float delay = 4.0f;
-		CFRunLoopTimerCallBack callback = (CFRunLoopTimerCallBack) addBT;
-		
-		CFRunLoopTimerRef waitTimer = CFRunLoopTimerCreate(kCFAllocatorDefault, CFAbsoluteTimeGetCurrent()+delay, 0.0f, 0, 0, callback, NULL);
-		CFRunLoopAddTimer(CFRunLoopGetMain(), waitTimer, kCFRunLoopCommonModes);
-	}
-	{
-		float delay = 8.0f;
-		CFRunLoopTimerCallBack callback = (CFRunLoopTimerCallBack) addPause;
-		
-		
-		CFRunLoopTimerRef waitTimer = CFRunLoopTimerCreate(kCFAllocatorDefault, CFAbsoluteTimeGetCurrent()+delay, 0.0f, 0, 0, callback, NULL);
-		CFRunLoopAddTimer(CFRunLoopGetMain(), waitTimer, kCFRunLoopCommonModes);
-	}
-	
-	{
-		float delay = 12.0f;
-		CFRunLoopTimerCallBack callback = (CFRunLoopTimerCallBack) removeBT;
-		
-		
-		CFRunLoopTimerRef waitTimer = CFRunLoopTimerCreate(kCFAllocatorDefault, CFAbsoluteTimeGetCurrent()+delay, 0.0f, 0, 0, callback, NULL);
-		CFRunLoopAddTimer(CFRunLoopGetMain(), waitTimer, kCFRunLoopCommonModes);
-	}
-	{
-		float delay = 16.0f;
-		CFRunLoopTimerCallBack callback = (CFRunLoopTimerCallBack) addBT;
-		
-		
-		CFRunLoopTimerRef waitTimer = CFRunLoopTimerCreate(kCFAllocatorDefault, CFAbsoluteTimeGetCurrent()+delay, 0.0f, 0, 0, callback, NULL);
-		CFRunLoopAddTimer(CFRunLoopGetMain(), waitTimer, kCFRunLoopCommonModes);
-	}
-	*/
 }
 
+
+
+
+
+#pragma mark 3.x Compatibility Hooks
+
+HOOKDEF(void, UIApplication, addStatusBarImageNamed$removeOnExit$, NSString* name, BOOL removeOnExit)
+{
+	[[LSStatusBarClient sharedInstance] setProperties: [NSNumber numberWithInt: 1] forItem: name];
+}
+
+HOOKDEF(void, UIApplication, addStatusBarImageNamed$, NSString* name)
+{
+	[[LSStatusBarClient sharedInstance] setProperties: [NSNumber numberWithInt: 1] forItem: name];
+}
+
+HOOKDEF(void, UIApplication, removeStatusBarImageNamed$, NSString* name)
+{
+	[[LSStatusBarClient sharedInstance] setProperties: nil forItem: name];
+}
+
+
+
+
+
+//@class UIStatusBarTimeItemView;
+
+
+
+@class SBApplication;
+
+HOOKDEF(void, SBApplication, exitedCommon)
+{
+	[[LSStatusBarServer sharedInstance] appDidExit: [self bundleIdentifier]];
+}
 
 __attribute__((constructor)) void start()
 {
@@ -319,32 +364,44 @@ __attribute__((constructor)) void start()
 		ClassCreate_UIStatusBarCustomItem();
 		{
 			HOOKCLASSMESSAGE(UIStatusBarItem, itemWithType:, itemWithType$);
-//			HOOKCLASSMESSAGE(UIStatusBarItem, itemType:canBeEnabledForData:, itemType$canBeEnabledForData$);
 		}
 		
 		{
 			HOOKMESSAGE(UIStatusBarForegroundView, _computeVisibleItems:eitherSideItems:, _computeVisibleItems$eitherSideItems$);
 		}
 		{
-			HOOKMESSAGE(UIStatusBarLayoutManager, _viewForItem:creatingIfNecessary:, _viewForItem$creatingIfNecessary$);
+			if([$UIStatusBarLayoutManager instancesRespondToSelector: @selector(_viewForItem:creatingIfNecessary:)])
+				HOOKMESSAGE(UIStatusBarLayoutManager, _viewForItem:creatingIfNecessary:, _viewForItem$creatingIfNecessary$);
+			if([$UIStatusBarLayoutManager instancesRespondToSelector: @selector(prepareEnabledItems:)])
+				HOOKMESSAGE(UIStatusBarLayoutManager, prepareEnabledItems:, prepareEnabledItems$);
+			
+			if([$UIStatusBarLayoutManager instancesRespondToSelector: @selector(_viewForItem:)])
+				HOOKMESSAGE(UIStatusBarLayoutManager, _viewForItem:, _viewForItem$);
+			if([$UIStatusBarLayoutManager instancesRespondToSelector: @selector(prepareEnabledItems:withData:actions:)])
+				HOOKMESSAGE(UIStatusBarLayoutManager, prepareEnabledItems:withData:actions:, prepareEnabledItems$withData$actions$);
+			
 			HOOKMESSAGE(UIStatusBarLayoutManager, _itemViews, _itemViews);
-			HOOKMESSAGE(UIStatusBarLayoutManager, prepareEnabledItems:, prepareEnabledItems$);
+		
+			HOOKMESSAGE(UIStatusBarTimeItemView, updateForNewData:actions:, updateForNewData$actions$);
+			HOOKMESSAGE(UIStatusBarTimeItemView, contentsImageForStyle:, contentsImageForStyle$);
+		
 		}
+		
 		
 		{
 			HOOKMESSAGE(UIApplication, addStatusBarImageNamed:removeOnExit:, addStatusBarImageNamed$removeOnExit$);
 			HOOKMESSAGE(UIApplication, addStatusBarImageNamed:, addStatusBarImageNamed$);
 			HOOKMESSAGE(UIApplication, removeStatusBarImageNamed:, removeStatusBarImageNamed$);
-			HOOKMESSAGE(UIApplication, _startWindowServerIfNecessary, _startWindowServerIfNecessary);
+			HOOKCLASSMESSAGE(UIApplication, _startWindowServerIfNecessary, _startWindowServerIfNecessary);
 		}
 		
 		if($SpringBoard)
 		{
-			[StatusBarItemServer sharedInstance];
+			[LSStatusBarServer sharedInstance];
+			
+			GETCLASS(SBApplication);
+			HOOKMESSAGE(SBApplication, exitedCommon, exitedCommon);
 		}
-		
-		NSLine();
-		
 	}
 }
 

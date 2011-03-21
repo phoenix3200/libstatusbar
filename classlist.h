@@ -9,3 +9,6 @@ CLCLASS(SpringBoard);
 
 CLCLASS(UIStatusBarCustomItemView);
 CLCLASS(UIStatusBarCustomItem);
+
+CLCLASS(UIStatusBarItemView);
+CLCLASS(UIStatusBarTimeItemView);

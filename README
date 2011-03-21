@@ -1,0 +1,25 @@
+Libstatusbar: pwning the statusbar for you.
+
+Libstatusbar is chiefly a compatibility library for 3.x-like statusbar icon support under 4.x, but allows for a more advanced API for custom time strings and icon swapping.
+
+
+All icons should be placed in either:
+
+3.x style, does not support retina icons:
+Silver: /System/Library/CoreServices/SpringBoard/Default_<name>.png 
+Black:  /System/Library/CoreServices/SpringBoard/FSO_<name>.png
+
+4.x style, supports retina (@2x) icons:
+Silver: /System/Library/Frameworks/UIKit.framework/Silver_<name>.png
+Black:  /System/Library/Frameworks/UIKit.framework/Black_<name>.png
+
+--- BASIC API ---
+
+3.x-style, simply add/remove items.  These will appear in the right list.
+
+[UIApp addStatusBarImageNamed: (NSString*) name];
+[UIApp removeStatusBarImageNamed: (NSString*) name];
+
+--- ADVANCED API ---
+
+See LSStatusBarItem.h for the API and Testing.mm for example usage

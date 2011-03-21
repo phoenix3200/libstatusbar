@@ -23,8 +23,12 @@ extern "C" int SBSSpringBoardServerPort();
 #import "UIStatusBarForegroundView.h"
 #import "UIStatusBarServer.h"
 
+#import "UIStatusBar.h"
+#import "UIStatusBarTimeItemView.h"
+
 #import "CPDistributedMessagingCenter.h"
 
+// structures listed here are NOT valid for iOS 4.2+ - at least two more "items" exist
 /*
 struct StatusBarData
 {

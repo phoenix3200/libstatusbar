@@ -12,6 +12,10 @@
 
 - (void) setIndicatorName: (NSString*) name;
 
+//@property (nonatomic, retain) NSString* indicatorName;
+@property (nonatomic, retain) NSDictionary* properties;
+
+
 @end
 
 void ClassCreate_UIStatusBarCustomItem();

@@ -5,6 +5,8 @@
 #import "classes.h"
 #import "UIStatusBarCustomItem.h"
 
+#import "LSStatusBarItem.h"
+
 //Class $UIStatusBarCustomItem;
 
 int UIStatusBarCustomItem$type(UIStatusBarCustomItem* self, SEL sel)
@@ -14,6 +16,15 @@ int UIStatusBarCustomItem$type(UIStatusBarCustomItem* self, SEL sel)
 
 int UIStatusBarCustomItem$leftOrder(UIStatusBarCustomItem* self, SEL sel)
 {
+	if(NSDictionary* properties = [self properties])
+	{
+		NSNumber* nsalign = [properties objectForKey: @"alignment"];
+		StatusBarAlignment alignment = nsalign ? (StatusBarAlignment) [nsalign intValue] : StatusBarAlignmentRight;
+		if(alignment & StatusBarAlignmentLeft)
+		{
+			return 15;
+		}
+	}
 	return 0;
 }
 
@@ -26,7 +37,23 @@ Class UIStatusBarCustomItem$viewClass(UIStatusBarCustomItem* self, SEL sel)
 
 int UIStatusBarCustomItem$rightOrder(UIStatusBarCustomItem* self, SEL sel)
 {
-	return 15;
+	if(NSDictionary* properties = [self properties])
+	{
+		NSNumber* nsalign = [properties objectForKey: @"alignment"];
+		StatusBarAlignment alignment = nsalign ? (StatusBarAlignment) [nsalign intValue] : StatusBarAlignmentRight;
+		if(alignment & StatusBarAlignmentRight)
+		{
+			return 15;
+		}
+		else
+		{
+			return 0;
+		}
+	}
+	else
+	{
+		return 15;
+	}
 }
 
 int UIStatusBarCustomItem$priority(UIStatusBarCustomItem* self, SEL sel)
@@ -41,6 +68,13 @@ NSString* UIStatusBarCustomItem$description(UIStatusBarCustomItem* self, SEL sel
 
 NSString* UIStatusBarCustomItem$indicatorName(UIStatusBarCustomItem* self, SEL sel)
 {
+	if(NSDictionary* properties = [self properties])
+	{
+		NSString* name = [properties objectForKey: @"imageName"];
+		if(name)
+			return name;
+	}
+	
 	NSString* &_indicatorName(MSHookIvar<NSString*>(self, "_indicatorName"));
 	return _indicatorName;
 }
@@ -52,6 +86,21 @@ void UIStatusBarCustomItem$setIndicatorName$(UIStatusBarCustomItem* self, SEL se
 	_indicatorName = [name retain];
 
 }
+
+
+NSDictionary* UIStatusBarCustomItem$properties(UIStatusBarCustomItem* self, SEL sel)
+{
+	NSDictionary* &_properties(MSHookIvar<NSDictionary*>(self, "_properties"));
+	return _properties;
+}
+
+void UIStatusBarCustomItem$setProperties$(UIStatusBarCustomItem* self, SEL sel, NSDictionary* properties)
+{
+	NSDictionary* &_properties(MSHookIvar<NSDictionary*>(self, "_properties"));
+	[_properties release];
+	_properties = [properties retain];
+}
+
 
 UIStatusBarItemView* UIStatusBarCustomItem$viewForManager$(id self, SEL sel, id manager)
 {
@@ -110,8 +159,15 @@ void ClassCreate_UIStatusBarCustomItem()
 	
 	class_addMethod($UIStatusBarCustomItem, @selector(removeAllViews), (IMP) UIStatusBarCustomItem$removeAllViews, "v@:");
 	
+	
+	class_addIvar($UIStatusBarCustomItem, "_properties", sizeof(id), 0x4, "@");
+	
 	class_addIvar($UIStatusBarCustomItem, "_indicatorName", sizeof(id), 0x4, "@");
 	class_addMethod($UIStatusBarCustomItem, @selector(indicatorName), (IMP)  UIStatusBarCustomItem$indicatorName, "@@:");
 	class_addMethod($UIStatusBarCustomItem, @selector(setIndicatorName:), (IMP) UIStatusBarCustomItem$setIndicatorName$, "v@:@");
+	
+	class_addMethod($UIStatusBarCustomItem, @selector(properties), (IMP)  UIStatusBarCustomItem$properties, "@@:");
+	class_addMethod($UIStatusBarCustomItem, @selector(setProperties:), (IMP) UIStatusBarCustomItem$setProperties$, "v@:@");	
+	
 	objc_registerClassPair($UIStatusBarCustomItem);
 }
