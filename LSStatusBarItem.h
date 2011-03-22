@@ -6,21 +6,21 @@ enum StatusBarAlignment
 };
 
 
+// only LSStatusBarItem (API) methods are considered public.
+
 @interface LSStatusBarItem : NSObject
 {
+@private
 	NSString* _identifier;
 	NSMutableDictionary* _properties;
 	NSMutableSet* _delegates;
 	BOOL _manualUpdate;
 }
 
-+ (void) updateItems;
-
-- (void) dealloc;
-- (void) setProperties: (NSDictionary*) dict;
-
 @end
 
+
+// Supported API
 
 @interface LSStatusBarItem (API)
 
@@ -63,5 +63,13 @@ enum StatusBarAlignment
 - (void) addTouchDelegate: (id) delegate;
 - (void) removeTouchDelegate: (id) delegate;
 
+
+@end
+
+
+@interface LSStatusBarItem (Private)
+ 
++ (void) _updateItems;
+- (void) _setProperties: (NSDictionary*) dict;
 
 @end

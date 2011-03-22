@@ -9,6 +9,8 @@
 #import "LSStatusBarServer.h"
 #import "UIStatusBarCustomItem.h"
 
+#import "LSStatusBarItem.h"
+
 void UpdateStatusBar(CFNotificationCenterRef center, LSStatusBarClient* client)
 {
 	[client updateStatusBar];
@@ -75,6 +77,11 @@ void UpdateStatusBar(CFNotificationCenterRef center, LSStatusBarClient* client)
 - (bool) processCurrentMessage
 {
 	bool ret = NO;
+	
+	if(!_currentMessage)
+	{
+		return NO;
+	}
 	
 	//NSMutableDictionary *processedMessage = [_currentMessage mutableCopy];
 	
@@ -206,8 +213,6 @@ void UpdateStatusBar(CFNotificationCenterRef center, LSStatusBarClient* client)
 		ret = YES;
 	}
 	
-	
-	
 	[processedKeys release];
 	
 	NSLog(@"processCurrentMessage? %@", ret ? @"YES" : @"NO");
@@ -230,7 +235,11 @@ void UpdateStatusBar(CFNotificationCenterRef center, LSStatusBarClient* client)
 			
 			[_foregroundView setStatusBarData: (StatusBarData*) [$UIStatusBarServer getStatusBarData] actions: 1 animated: YES];
 		}
+		
+		[LSStatusBarItem _updateItems];
 	}
+	
+//	
 }
 
 - (void) setProperties: (id) properties forItem: (NSString*) item

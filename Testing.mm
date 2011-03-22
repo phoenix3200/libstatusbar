@@ -13,7 +13,6 @@ void addPlay()
 {
 	playItem =  [[LSStatusBarItem alloc] initWithIdentifier: @"libstatusbar.Play" alignment: StatusBarAlignmentLeft];
 	playItem.imageName = @"Play";
-//	[UIApp addStatusBarImageNamed: @"Bluetooth"];
 }
 
 void playToBT()

@@ -14,9 +14,14 @@ NSMutableDictionary* sbitems = nil;
 @implementation LSStatusBarItem
 
 
-+ (void) updateItems
++ (void) _updateItems
 {
 	NSDictionary* currentMessage = [[LSStatusBarClient sharedInstance] currentMessage];
+	
+	if(!currentMessage)
+	{
+		return;
+	}
 	
 	if(!sbitems)
 	{
@@ -27,12 +32,12 @@ NSMutableDictionary* sbitems = nil;
 	{
 		NSDictionary* dict = [currentMessage objectForKey: key];
 		
-		if(dict)
+		if(dict && [dict isKindOfClass: [NSDictionary class]])
 		{
 			NSArray* idArray = [sbitems objectForKey: key];
 			for(LSStatusBarItem* item in idArray)
 			{
-				[item setProperties: dict];
+				[item _setProperties: dict];
 			}
 		}
 	}
@@ -79,7 +84,7 @@ NSMutableDictionary* sbitems = nil;
 		{
 			_identifier = [identifier retain];
 			
-			[self setProperties: [currentMessage objectForKey: _identifier]];
+			[self _setProperties: [currentMessage objectForKey: _identifier]];
 			
 			NSNumber* align = [_properties objectForKey: @"alignment"];
 			if(!align)
@@ -146,8 +151,9 @@ NSMutableDictionary* sbitems = nil;
 }
 
 
-- (void) setProperties: (NSDictionary*) dict
+- (void) _setProperties: (NSDictionary*) dict
 {
+	[_properties release];
 	if(!dict)
 	{
 		_properties = [NSMutableDictionary new];
