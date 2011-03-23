@@ -345,6 +345,7 @@ HOOKDEF(void, UIApplication, removeStatusBarImageNamed$, NSString* name)
 
 HOOKDEF(void, SBApplication, exitedCommon)
 {
+	CALL_ORIG(SBApplication, exitedCommon);
 	[[LSStatusBarServer sharedInstance] appDidExit: [self bundleIdentifier]];
 }
 
