@@ -1,4 +1,7 @@
 
+
+#define TESTING
+
 #import "common.h"
 #import "defines.h"
 
@@ -11,12 +14,16 @@ LSStatusBarItem* playItem;
 
 void addPlay()
 {
+	SelLog();
+	
 	playItem =  [[LSStatusBarItem alloc] initWithIdentifier: @"libstatusbar.Play" alignment: StatusBarAlignmentLeft];
 	playItem.imageName = @"Play";
 }
 
 void playToBT()
 {
+	SelLog();
+	
 	playItem.imageName = @"Bluetooth";
 }
 
@@ -27,6 +34,8 @@ LSStatusBarItem* centerItem2;
 
 void addCenterText()
 {
+	SelLog();
+	
 	centerItem = [[LSStatusBarItem alloc] initWithIdentifier: @"libstatusbar.Center" alignment: StatusBarAlignmentCenter];
 	centerItem.titleString = @"Test string";
 
@@ -36,7 +45,7 @@ void addCenterText()
 
 void modifyCenterText()
 {
-	[playItem release];
+	//[playItem release];
 	
 	centerItem2.titleString = @"is an even longer test string to fill the screen";
 }
@@ -79,8 +88,9 @@ void DelayedTesting()
 
 __attribute__((constructor)) void TestingStart()
 {
-	GETCLASS(MobileSafariWindow);
-	if($MobileSafariWindow)
+	//GETCLASS(SpringBoard);
+	GETCLASS(SpringBoard);
+	if($SpringBoard)
 	{
 		DelayedTesting();
 	}

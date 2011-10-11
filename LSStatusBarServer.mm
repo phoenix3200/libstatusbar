@@ -12,7 +12,7 @@
 
 void updateLockStatus(CFNotificationCenterRef center, LSStatusBarServer* server)
 {
-	NSLine();
+//	NSLine();
 	[server updateLockStatus];
 }
 
@@ -66,9 +66,32 @@ void incrementTimer()//CFRunLoopTimerRef timer, LSStatusBarServer* self)
 	return _currentMessage;
 }
 
-
-- (void) processMessageCommon
+- (void) postChanged
 {
+	SelLog();
+//	NSLine();
+	notify_post("libstatusbar_changed");
+}
+
+- (void) enqueuePostChanged
+{
+	SelLog();
+//	NSLine();
+	NSRunLoop* loop = [NSRunLoop mainRunLoop];
+	
+	[loop cancelPerformSelector: @selector(postChanged) target: self argument: nil];
+	[loop performSelector: @selector(postChanged) target: self argument: nil order: 0 modes: [NSArray arrayWithObject: NSDefaultRunLoopMode]];
+	
+	//[NSObject cancelPreviousPerformRequestsWithTarget: self selector: @selector(postChanged) object: nil];
+	//[self performSelector: @selector(postChanged) withObject: nil afterDelay: 0.0001f];	
+}
+
+- (void) processMessageCommonWithFocus: (NSString*) item
+{
+	NSLog(@"processing %@", item);
+	
+	timeHidden = NO;
+	
 	NSMutableArray* titleStrings = [NSMutableArray array];
 	for(NSString* key in _currentKeys)
 	{
@@ -80,22 +103,30 @@ void incrementTimer()//CFRunLoopTimerRef timer, LSStatusBarServer* self)
 		NSNumber* alignment = [dict objectForKey: @"alignment"];
 		if(alignment && ((StatusBarAlignment) [alignment intValue]) == StatusBarAlignmentCenter)
 		{
-			NSLine();
 			NSNumber* visible = [dict objectForKey: @"visible"];
 			if(!visible || [visible boolValue])
 			{
-				NSLine();
-				if(NSString* titleString = [dict objectForKey: @"titleString"])
+				NSString* titleString = [dict objectForKey: @"titleString"];
+				if(titleString && [titleString length])
 				{
-					NSLine();
+					if(item && [item isEqualToString: key])
+					{
+						[self setState: [titleStrings count]];
+						[self resyncTimer];
+					}
 					[titleStrings addObject: titleString];
+					
+					if([[dict objectForKey: @"hidesTime"] boolValue])
+					{
+						timeHidden = YES;
+					}
 				}
 			}
 		}
 	}
 	
 	[_currentMessage setValue: _currentKeys forKey: @"keys"];
-	NSDesc(_currentKeys);
+//	NSDesc(_currentKeys);
 	
 	
 	
@@ -113,14 +144,16 @@ void incrementTimer()//CFRunLoopTimerRef timer, LSStatusBarServer* self)
 		//	notify_post("libstatusbar_changed");
 		[self stopTimer];
 	}
-	NSDesc(_currentMessage);
+//	NSDesc(_currentMessage);
 	
-	notify_post("libstatusbar_changed");
+	[self enqueuePostChanged];
+	//[NSObject cancelPreviousPerformRequestsWithTarget: self selector: @selector(postChanged) object: nil];
+	//[self performSelector: @selector(postChanged) withObject: nil afterDelay: 0.0f];
 }
 
 - (void) setProperties: (id) properties forItem: (NSString*) item bundle: (NSString*) bundle
 {
-	SelLog();
+//	SelLog();
 	if(!item || !bundle)
 	{
 		NSLog(@"missing info. returning...");
@@ -136,6 +169,7 @@ void incrementTimer()//CFRunLoopTimerRef timer, LSStatusBarServer* self)
 	}
 	
 	int itemIdx = [_currentKeys indexOfObject: item];
+	
 	
 	if(properties)
 	{
@@ -181,7 +215,7 @@ void incrementTimer()//CFRunLoopTimerRef timer, LSStatusBarServer* self)
 	
 	// find all title strings
 	
-	[self processMessageCommon];
+	[self processMessageCommonWithFocus: item];
 }
 
 
@@ -217,7 +251,7 @@ void incrementTimer()//CFRunLoopTimerRef timer, LSStatusBarServer* self)
 		}
 	}
 	
-	[self processMessageCommon];
+	[self processMessageCommonWithFocus: nil];
 }
 
 
@@ -232,9 +266,39 @@ void incrementTimer()//CFRunLoopTimerRef timer, LSStatusBarServer* self)
 	[self setProperties: properties forItem: item bundle: bundleId];
 }
 
+
+- (void) setState: (int) newState
+{
+	uint64_t value = newState;
+	static int token = 0;
+	if(!token)
+	{
+		const char* notif = "libstatusbar_changed";
+		notify_register_check(notif, &token);
+	}
+	notify_set_state(token, value);
+	[self enqueuePostChanged];
+	
+}
+
+- (void) resyncTimer
+{
+	if(timer)
+	{
+		CFRunLoopTimerInvalidate(timer);
+		CFRelease(timer);
+		
+		timer = CFRunLoopTimerCreate(kCFAllocatorDefault, CFAbsoluteTimeGetCurrent()+3.5f, 3.5f, 0, 0, (CFRunLoopTimerCallBack) incrementTimer, NULL);
+		CFRunLoopAddTimer(CFRunLoopGetMain(), timer, kCFRunLoopCommonModes);
+	}
+	
+	
+}
+
+
 - (void) startTimer
 {
-	NSLine();
+//	NSLine();
 	
 	// is timer already running?
 	if(timer)
@@ -246,16 +310,19 @@ void incrementTimer()//CFRunLoopTimerRef timer, LSStatusBarServer* self)
 	// check lock status
 	uint64_t locked;
 	{
-		int token = 0;
-		notify_register_check("com.apple.springboard.lockstate", &token);
+		static int token = 0;
+		if(!token)
+		{
+			notify_register_check("com.apple.springboard.lockstate", &token);
+		}
 		notify_get_state(token, &locked);
 	}
 	
-	NSLine();
+//	NSLine();
 	
 	// reset timer state
 	[self stopTimer];
-	NSLine();
+//	NSLine();
 	
 	if(!locked)
 	{
@@ -268,44 +335,63 @@ void incrementTimer()//CFRunLoopTimerRef timer, LSStatusBarServer* self)
 		
 			timer = CFRunLoopTimerCreate(kCFAllocatorDefault, CFAbsoluteTimeGetCurrent()+3.5f, 3.5f, 0, 0, (CFRunLoopTimerCallBack) incrementTimer, NULL);
 			CFRunLoopAddTimer(CFRunLoopGetMain(), timer, kCFRunLoopCommonModes);
+			
+			{
+				/*
+				const char* notif = "libstatusbar_changed";
+				uint64_t value = 0;
+				int token = 0;
+				notify_register_check(notif, &token);
+				notify_set_state(token, value);
+				*/
+				[self setState: 0];
+				
+				[self enqueuePostChanged];
+				//notify_post(notif);
+			}
+			
 		}
 	}
-	NSLine();
+//	NSLine();
 	
 }
 
 - (void) stopTimer
 {
-	NSLine();
+//	NSLine();
 	
 	// reset the statusbar state
 	{
+		/*
 		const char* notif = "libstatusbar_changed";
 		
 		uint64_t value = NSNotFound;
 		int token = 0;
 		notify_register_check(notif, &token);
-		
 		notify_set_state(token, value);
+		*/
 		
 		if(timer) // only post a notification if the timer was running
-			notify_post(notif);
+			[self enqueuePostChanged];
+			//notify_post(notif);
 	}
 	
+	[self setState: NSNotFound];
 	// kill timer
 	if(timer)
 	{
 		CFRunLoopTimerInvalidate(timer);
 		CFRelease(timer);
 		timer = nil;
+		[self enqueuePostChanged];
 	}
-	NSLine();
+//	NSLine();
 }
 
 
 - (void) incrementTimer
 {
-	NSLine();
+//	NSLine();
 	
 	NSArray* titleStrings = [_currentMessage objectForKey: @"titleStrings"];
 	
@@ -314,20 +400,25 @@ void incrementTimer()//CFRunLoopTimerRef timer, LSStatusBarServer* self)
 	if(titleStrings && [titleStrings count])
 	{
 		uint64_t value;
-		int token = 0;
-		notify_register_check(notif, &token);
+		static int token = 0;
+		if(!token)
+		{
+			notify_register_check(notif, &token);
+		}
 		notify_get_state(token, &value);
 		
 		value++;
-		if(value > [titleStrings count])
+		if(timeHidden ? (value >= [titleStrings count]) : (value > [titleStrings count]) )
 		{
 			value = 0;
 		}
 		
-		NSLog(@"idx = %ld", value);
+//		NSLog(@"idx = %ld", value);
 		
 		notify_set_state(token, value);
-		notify_post(notif);
+		
+		[self enqueuePostChanged];
+		//notify_post(notif);
 	}
 	else
 	{

@@ -38,7 +38,6 @@ HOOKDEF(id, UIStatusBarItem, itemWithType$, int type)
 
 UIStatusBarItemView* InitializeView(UIStatusBarLayoutManager* self, id item)
 {
-	
 	UIStatusBarItemView* _view = [item viewForManager: self];
 	if(_view)
 	{
@@ -90,7 +89,8 @@ UIStatusBarItemView* InitializeView(UIStatusBarLayoutManager* self, id item)
 
 HOOKDEF(void, UIStatusBarForegroundView, _computeVisibleItems$eitherSideItems$, NSMutableArray** visibleItems,  NSMutableArray* eitherSideItems) // 3 visible items
 {
-
+	SelLog();
+	
 	// add our objects to the appropriate arrays
 	for(int i=0; i<2; i++) // only left+right - center is "virtual"
 	{
@@ -112,6 +112,8 @@ HOOKDEF(UIView*, UIStatusBarLayoutManager, _viewForItem$creatingIfNecessary$, id
 {
 	if([item isKindOfClass: $UIStatusBarCustomItem])
 	{
+		//NSLine();
+		
 		UIStatusBarItemView* _view = InitializeView(self, item);
 		return _view;
 	}
@@ -126,6 +128,8 @@ HOOKDEF(UIView*, UIStatusBarLayoutManager, _viewForItem$, id item)
 {
 	if([item isKindOfClass: $UIStatusBarCustomItem])
 	{
+		//NSLine();
+		
 		UIStatusBarItemView* _view = InitializeView(self, item);
 		return _view;
 	}
@@ -218,6 +222,8 @@ HOOKDEF(BOOL, UIStatusBarLayoutManager, prepareEnabledItems$withData$actions$, B
 
 HOOKDEF(BOOL, UIStatusBarTimeItemView, updateForNewData$actions$, void* data, int actions)
 {
+	SelLog();
+	
 	NSString* &_timeString(MSHookIvar<NSString*>(self, "_timeString"));
 	NSString* oldString = [_timeString retain];
 	
@@ -226,8 +232,11 @@ HOOKDEF(BOOL, UIStatusBarTimeItemView, updateForNewData$actions$, void* data, in
 	{
 		uint64_t value;
 		const char* notif = "libstatusbar_changed";
-		int token = 0;
-		notify_register_check(notif, &token);
+		static int token = 0;
+		if(!token)
+		{
+			notify_register_check(notif, &token);
+		}
 		notify_get_state(token, &value);
 		
 		idx = value;
@@ -256,12 +265,14 @@ HOOKDEF(BOOL, UIStatusBarTimeItemView, updateForNewData$actions$, void* data, in
 
 HOOKDEF(UIImage*, UIStatusBarTimeItemView, contentsImageForStyle$, int style)
 {
+	SelLog();
+	
 	NSString* &_timeString(MSHookIvar<NSString*>(self, "_timeString"));
 
 	NSMutableString* timeString = [_timeString mutableCopy];
 	
 	CGSize size = [(UIStatusBar*)[UIApp statusBar] currentFrame].size;
-	float maxlen = (size.width > size.height ? size.width : size.height)*0.65;
+	float maxlen = (size.width > size.height ? size.width : size.height)*0.6;//0.65;
 	
 	// ellipsize strings if they're too long
 	if([timeString sizeWithFont: (UIFont*) [self textFont]].width > maxlen)
@@ -291,7 +302,7 @@ HOOKDEF(UIImage*, UIStatusBarTimeItemView, contentsImageForStyle$, int style)
 
 HOOKDEF(void, UIApplication, _startWindowServerIfNecessary)
 {
-	HookLog();
+	SelLog();
 	CALL_ORIG(UIApplication, _startWindowServerIfNecessary);
 	
 	static BOOL hasAlreadyRan = NO;

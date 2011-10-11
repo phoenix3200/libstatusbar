@@ -13,6 +13,13 @@ Black:  /System/Library/CoreServices/SpringBoard/FSO_<name>.png
 Silver: /System/Library/Frameworks/UIKit.framework/Silver_<name>.png
 Black:  /System/Library/Frameworks/UIKit.framework/Black_<name>.png
 
+5.x style, additionally supports notification center icons:
+Silver: /System/Library/Frameworks/UIKit.framework/ColorOnGrayShadow_<name>.png
+Black:  /System/Library/Frameworks/UIKit.framework/WhiteOnBlackEtch_<name>.png
+Notif.: /System/Library/Frameworks/UIKit.framework/WhiteOnBlackShadow_<name>.png
+
+All styles are cross-compatible, but may not be feature-full.
+
 --- BASIC API ---
 
 3.x-style, simply add/remove items.  These will appear in the right list.

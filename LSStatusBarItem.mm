@@ -185,6 +185,20 @@ NSMutableDictionary* sbitems = nil;
 	return visible ? [visible boolValue] : YES;
 }
 
+- (void) setHidesTime: (BOOL) hidesTime
+{
+	[_properties setObject: [NSNumber numberWithBool: hidesTime] forKey: @"hidesTime"];
+	
+	if(!_manualUpdate)
+		[self update];
+}
+
+- (BOOL) hidesTime
+{
+	NSNumber* hidesTime = [_properties objectForKey: @"hidesTime"];
+	return hidesTime ? [hidesTime boolValue] : NO;
+}
+
 
 - (void) setImageName: (NSString*) imageName
 {
@@ -192,10 +206,16 @@ NSMutableDictionary* sbitems = nil;
 	{
 		[NSException raise: NSInternalInconsistencyException format: @"LSStatusBarItem: Cannot use images with a center alignment"];
 	}
-	[_properties setObject: imageName forKey: @"imageName"];
 	
-	if(!_manualUpdate)
-		[self update];
+	NSString* oldImageName = [_properties objectForKey: @"imageName"];
+	
+	if(!oldImageName || ![oldImageName isEqualToString: imageName])
+	{
+		[_properties setValue: imageName forKey: @"imageName"];	
+
+		if(!_manualUpdate)
+			[self update];
+	}
 }
 
 - (NSString*) imageName
@@ -210,10 +230,17 @@ NSMutableDictionary* sbitems = nil;
 		[NSException raise: NSInternalInconsistencyException format: @"LSStatusBarItem: Cannot use a title string with a side alignment"];
 	}
 	
-	[_properties setObject: string forKey: @"titleString"];	
+	NSString* oldTitle = [_properties objectForKey: @"titleString"];
 	
-	if(!_manualUpdate)
-		[self update];
+	if((!oldTitle && string) || (oldTitle && ![oldTitle isEqualToString: string]))
+	{
+		NSLog(@"oldTitle = %@, newTitle = %@", oldTitle, string);
+		
+		[_properties setValue: string forKey: @"titleString"];	
+
+		if(!_manualUpdate)
+			[self update];
+	}
 }
 
 - (NSString*) titleString

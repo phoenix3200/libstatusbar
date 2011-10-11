@@ -62,7 +62,7 @@ void UpdateStatusBar(CFNotificationCenterRef center, LSStatusBarClient* client)
 	 
 		_currentMessage = [[dmc sendMessageAndReceiveReplyName: @"currentMessage" userInfo: nil] retain];
 	}
-	NSDesc(_currentMessage);
+//	NSDesc(_currentMessage);
 }
 
 - (NSString*) titleStringAtIndex: (int) idx
@@ -101,14 +101,14 @@ void UpdateStatusBar(CFNotificationCenterRef center, LSStatusBarClient* client)
 	
 	int keyidx = 22;
 	
-	NSDesc(_currentMessage);
+//	NSDesc(_currentMessage);
 	extern NSMutableArray* customItems[3];
 	
 	for(int i=0; i<3; i++)
 	{
 		if(customItems[i])
 		{
-			NSDesc(customItems[i]);
+		//	NSDesc(customItems[i]);
 			int cnt = [customItems[i] count]-1;
 		/*
 		extern NSMutableArray* allCustomItems;
@@ -134,7 +134,7 @@ void UpdateStatusBar(CFNotificationCenterRef center, LSStatusBarClient* client)
 				{
 					ret = YES;
 					
-					NSLog(@"removing item: %@", indicatorName);
+//					NSLog(@"removing item: %@", indicatorName);
 					[item removeAllViews];
 					//[allCustomItems removeObjectAtIndex: cnt];
 					[customItems[i] removeObjectAtIndex: cnt];
@@ -142,7 +142,7 @@ void UpdateStatusBar(CFNotificationCenterRef center, LSStatusBarClient* client)
 				}
 				else
 				{
-					NSLog(@"keeping item: %@", indicatorName);
+//					NSLog(@"keeping item: %@", indicatorName);
 					//[processedMessage removeObjectForKey: indicatorName];
 					[processedKeys removeObject: indicatorName];
 					
@@ -156,7 +156,7 @@ void UpdateStatusBar(CFNotificationCenterRef center, LSStatusBarClient* client)
 		}
 		else
 		{
-			NSLog(@"creating array");
+//			NSLog(@"creating array");
 			customItems[i] = [[NSMutableArray alloc] init];
 		}
 	}
@@ -169,7 +169,7 @@ void UpdateStatusBar(CFNotificationCenterRef center, LSStatusBarClient* client)
 		GETCLASS(UIStatusBarItem);
 		for(NSString* key in processedKeys)//processedMessage)
 		{
-			NSLog(@"adding item: %@", key);
+//			NSLog(@"adding item: %@", key);
 			
 			UIStatusBarCustomItem* item = [$UIStatusBarItem itemWithType: keyidx++];
 			[item setIndicatorName: key];
@@ -215,7 +215,7 @@ void UpdateStatusBar(CFNotificationCenterRef center, LSStatusBarClient* client)
 	
 	[processedKeys release];
 	
-	NSLog(@"processCurrentMessage? %@", ret ? @"YES" : @"NO");
+//	NSLog(@"processCurrentMessage? %@", ret ? @"YES" : @"NO");
 	return ret;
 }
 
@@ -231,9 +231,39 @@ void UpdateStatusBar(CFNotificationCenterRef center, LSStatusBarClient* client)
 		UIStatusBarForegroundView* _foregroundView = MSHookIvar<UIStatusBarForegroundView*>([UIApp statusBar], "_foregroundView");
 		if(_foregroundView)
 		{
+			[[UIApp statusBar] forceUpdateData: NO];
+			
+			NSLine();
+			GETCLASS(SBBulletinListController);
+			NSLine();
+			if($SBBulletinListController)
+			{
+				NSLine();
+				id listview = [[$SBBulletinListController sharedInstance] listView];
+				NSType(listview);
+				if(listview)
+				{
+					id _statusBar = MSHookIvar<id>(listview, "_statusBar");
+					[_statusBar forceUpdateData: NO];
+				}
+			}
+			
+			
+			/*
 			//[_foregroundView _reflowItemViewsWithDuration: 0.0f suppressCenterAnimation: YES];
 			
-			[_foregroundView setStatusBarData: (StatusBarData*) [$UIStatusBarServer getStatusBarData] actions: 1 animated: YES];
+			[_foregroundView startIgnoringData];
+			[_foregroundView stopIgnoringData: YES];
+			
+			
+			
+			
+			StatusBarData* data = (StatusBarData*) [$UIStatusBarServer getStatusBarData];
+			
+			if(data)
+			//	[_foregroundView setStatusBarData: data actions: 1 animated: YES];
+				[_foregroundView setStatusBarData: data actions: 0 animated: NO];
+				*/
 		}
 		
 		[LSStatusBarItem _updateItems];
@@ -244,7 +274,7 @@ void UpdateStatusBar(CFNotificationCenterRef center, LSStatusBarClient* client)
 
 - (void) setProperties: (id) properties forItem: (NSString*) item
 {
-	SelLog();
+//	SelLog();
 	if(item)
 	{
 		NSString* bundleId = [[NSBundle mainBundle] bundleIdentifier];

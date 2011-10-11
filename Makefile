@@ -12,7 +12,7 @@ GO_EASY_ON_ME =1
 SDKVERSION = 4.0
 
 ADDITIONAL_OBJCCFLAGS = -fvisibility=hidden
-ADDITIONAL_OBJCCFLAGS += -I/Users/public/decompile/iPhoneOS4.0.sdk/System/Library/Frameworks/UIKit.framework/Headers/
+ADDITIONAL_OBJCCFLAGS += -I/Volumes/OSX400/Users/public/decompile/iPhoneOS4.0.sdk/System/Library/Frameworks/UIKit.framework/Headers/
 
 
 include framework/makefiles/common.mk

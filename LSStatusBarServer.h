@@ -7,6 +7,7 @@
 	NSMutableDictionary* _currentKeyUsage;
 	
 	CFRunLoopTimerRef timer;
+	bool timeHidden;
 }
 
 + (id) sharedInstance;

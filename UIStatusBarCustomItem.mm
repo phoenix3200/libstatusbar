@@ -68,6 +68,7 @@ NSString* UIStatusBarCustomItem$description(UIStatusBarCustomItem* self, SEL sel
 
 NSString* UIStatusBarCustomItem$indicatorName(UIStatusBarCustomItem* self, SEL sel)
 {
+	
 	if(NSDictionary* properties = [self properties])
 	{
 		NSString* name = [properties objectForKey: @"imageName"];
