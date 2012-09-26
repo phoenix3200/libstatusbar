@@ -24,7 +24,7 @@ void playToBT()
 {
 	SelLog();
 	
-	playItem.imageName = @"Bluetooth";
+	playItem.imageName = @"Siri";
 }
 
 LSStatusBarItem* centerItem;

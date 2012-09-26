@@ -99,7 +99,7 @@ void UpdateStatusBar(CFNotificationCenterRef center, LSStatusBarClient* client)
 	}
 	*/
 	
-	int keyidx = 22;
+	int keyidx = 24;
 	
 //	NSDesc(_currentMessage);
 	extern NSMutableArray* customItems[3];

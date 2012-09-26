@@ -33,15 +33,16 @@ UIImage* UIStatusBarCustomItemView$contentsImageForStyle$(id self, SEL sel, int 
 	}
 	*/
 	
-	//NSBundle* kitbundle = [NSBundle bundleWithPath: @"/System/Library/Frameworks/UIKit.framework"];
+//	NSBundle* kitbundle = [NSBundle bundleWithPath: @"/System/Library/Frameworks/UIKit.framework"];
 	
 
+	//NSBundle* bundle
 	
 	if(!ret) // try iOS 4 naming convention
 	{
 		NSString* styleStr = isBlack ? @"Black" : @"Silver";
 		NSString *imageName = [NSString stringWithFormat: @"%@_%@.png", styleStr, itemName];
-//		ret = [UIImage imageNamed: imageName inBundle: kitbundle];
+	//	ret = [UIImage imageNamed: imageName inBundle: kitbundle];
 		ret = [UIImage kitImageNamed: imageName];
 	}
 	

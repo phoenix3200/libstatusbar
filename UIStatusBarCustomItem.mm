@@ -1,4 +1,6 @@
 
+//#define TESTING
+
 #import "common.h"
 #import "defines.h"
 
@@ -6,6 +8,7 @@
 #import "UIStatusBarCustomItem.h"
 
 #import "LSStatusBarItem.h"
+
 
 //Class $UIStatusBarCustomItem;
 
@@ -171,4 +174,6 @@ void ClassCreate_UIStatusBarCustomItem()
 	class_addMethod($UIStatusBarCustomItem, @selector(setProperties:), (IMP) UIStatusBarCustomItem$setProperties$, "v@:@");	
 	
 	objc_registerClassPair($UIStatusBarCustomItem);
+	
+	CommonLog("Class created")
 }

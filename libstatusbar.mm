@@ -89,7 +89,7 @@ UIStatusBarItemView* InitializeView(UIStatusBarLayoutManager* self, id item)
 
 HOOKDEF(void, UIStatusBarForegroundView, _computeVisibleItems$eitherSideItems$, NSMutableArray** visibleItems,  NSMutableArray* eitherSideItems) // 3 visible items
 {
-	SelLog();
+//	SelLog();
 	
 	// add our objects to the appropriate arrays
 	for(int i=0; i<2; i++) // only left+right - center is "virtual"
@@ -106,6 +106,58 @@ HOOKDEF(void, UIStatusBarForegroundView, _computeVisibleItems$eitherSideItems$, 
 	
 	CALL_ORIG(UIStatusBarForegroundView, _computeVisibleItems$eitherSideItems$, visibleItems,  eitherSideItems);
 }
+
+
+HOOKDEF(id, UIStatusBarForegroundView, _computeVisibleItemsPreservingHistory$, bool preserve)
+{
+
+	id ret = CALL_ORIG(UIStatusBarForegroundView, _computeVisibleItemsPreservingHistory$, preserve);
+	
+	UIStatusBarLayoutManager * (&layoutManagers)[3](MSHookIvar<UIStatusBarLayoutManager*[3]>(self, "_layoutManagers"));
+	
+	float boundsWidth = [self bounds].size.width;
+	float centerWidth;
+	{
+		
+		NSMutableArray* center = [ret objectForKey: [NSNumber numberWithInt: 2]];
+		centerWidth = [layoutManagers[2] widthNeededForItems: center];
+//		CommonLog("Center width = %f", centerWidth);
+	}
+	
+	float edgeWidth = (boundsWidth - centerWidth) * 0.5f;
+	
+	
+	for(int i=0; i<2; i++)
+	{
+		NSMutableArray* arr = [ret objectForKey: [NSNumber numberWithInt: i]];
+		
+		[layoutManagers[i] clearOverlapFromItems: arr];
+		
+		float arrWidth = [layoutManagers[i] widthNeededForItems: arr];
+		
+		for(UIStatusBarCustomItem* item in customItems[i])
+		{
+			NSNumber* visible = [[item properties] objectForKey: @"visible"];
+			if(!visible || [visible boolValue])
+			{
+				float itemWidth = [layoutManagers[i] widthNeededForItem: item];
+				if(arrWidth + itemWidth < edgeWidth + 4)
+				{
+					[arr addObject: item];
+					arrWidth += itemWidth;
+				}
+			}
+		}
+		if(arrWidth > edgeWidth - 1)
+		{
+			[layoutManagers[i] distributeOverlap: arrWidth - edgeWidth + 1 amongItems: arr];
+		}
+	}
+//	NSDesc(ret);
+	
+	return ret;
+}
+
 
 
 HOOKDEF(UIView*, UIStatusBarLayoutManager, _viewForItem$creatingIfNecessary$, id item, bool ifNecc)
@@ -191,7 +243,7 @@ void PrepareEnabledItemsCommon(UIStatusBarLayoutManager* self)
 
 HOOKDEF(BOOL, UIStatusBarLayoutManager, prepareEnabledItems$, BOOL* items)
 {
-	SelLog();
+//	SelLog();
 	BOOL ret = CALL_ORIG(UIStatusBarLayoutManager, prepareEnabledItems$, items);
 	
 	// the default function didn't refresh...let's refresh anyways
@@ -204,7 +256,7 @@ HOOKDEF(BOOL, UIStatusBarLayoutManager, prepareEnabledItems$, BOOL* items)
 
 HOOKDEF(BOOL, UIStatusBarLayoutManager, prepareEnabledItems$withData$actions$, BOOL* items, void* data, int actions)
 {
-	SelLog();
+//	SelLog();
 	BOOL ret = CALL_ORIG(UIStatusBarLayoutManager, prepareEnabledItems$withData$actions$, items, data, actions);
 	
 	// the default function didn't refresh...let's refresh anyways
@@ -217,12 +269,33 @@ HOOKDEF(BOOL, UIStatusBarLayoutManager, prepareEnabledItems$withData$actions$, B
 }
 
 
+HOOKDEF(CGRect, UIStatusBarLayoutManager, rectForItems$, NSMutableArray* items)
+{
+	int &region(MSHookIvar<int>(self, "_region"));
+	
+	
+	if(region != 2)
+	{
+		CommonLog("Rect for region %d", region);
+		
+		for(UIStatusBarCustomItem* item in customItems[region])
+		{
+			NSNumber* visible = [[item properties] objectForKey: @"visible"];
+			if(!visible || [visible boolValue])
+			{
+				[items addObject: item];
+			}
+		}
+	}
+	return CALL_ORIG(UIStatusBarLayoutManager, rectForItems$, items);
+}
+
 
 #pragma mark UIStatusBarTimeItemView modifications (for center text)
 
 HOOKDEF(BOOL, UIStatusBarTimeItemView, updateForNewData$actions$, void* data, int actions)
 {
-	SelLog();
+//	SelLog();
 	
 	NSString* &_timeString(MSHookIvar<NSString*>(self, "_timeString"));
 	NSString* oldString = [_timeString retain];
@@ -265,7 +338,7 @@ HOOKDEF(BOOL, UIStatusBarTimeItemView, updateForNewData$actions$, void* data, in
 
 HOOKDEF(UIImage*, UIStatusBarTimeItemView, contentsImageForStyle$, int style)
 {
-	SelLog();
+//	SelLog();
 	
 	NSString* &_timeString(MSHookIvar<NSString*>(self, "_timeString"));
 
@@ -302,7 +375,7 @@ HOOKDEF(UIImage*, UIStatusBarTimeItemView, contentsImageForStyle$, int style)
 
 HOOKDEF(void, UIApplication, _startWindowServerIfNecessary)
 {
-	SelLog();
+//	SelLog();
 	CALL_ORIG(UIApplication, _startWindowServerIfNecessary);
 	
 	static BOOL hasAlreadyRan = NO;
@@ -320,7 +393,7 @@ HOOKDEF(void, UIApplication, _startWindowServerIfNecessary)
 	{
 		[LSStatusBarClient sharedInstance];
 	}
-	NSLine();
+//	NSLine();
 }
 
 
@@ -350,7 +423,22 @@ HOOKDEF(void, UIApplication, removeStatusBarImageNamed$, NSString* name)
 
 //@class UIStatusBarTimeItemView;
 
+enum CFVers
+{
+	CF_NONE = 0,
+	CF_30 = 1,
+	CF_31 = 2,
+	CF_32 = 4,
+	CF_40 = 8,
+	CF_41 = 16,
+	CF_42 = 32,
+	CF_43 = 64,
+	CF_50 = 128,
+	CF_51 = 256,
+	CF_60 = 512,
+};
 
+CFVers cfvers;
 
 @class SBApplication;
 
@@ -360,9 +448,66 @@ HOOKDEF(void, SBApplication, exitedCommon)
 	[[LSStatusBarServer sharedInstance] appDidExit: [self bundleIdentifier]];
 }
 
+CFVers QuantizeCFVers()
+{
+	if(kCFCoreFoundationVersionNumber == 478.47)
+	{
+		return CF_30;
+	}
+	else if(kCFCoreFoundationVersionNumber == 478.52)
+	{
+		return CF_31;
+	}
+	else if(kCFCoreFoundationVersionNumber == 478.61)
+	{
+		return CF_32;
+	}
+	else if(kCFCoreFoundationVersionNumber == 550.32)
+	{
+		return CF_40;
+	}
+	else if(kCFCoreFoundationVersionNumber == 550.38)
+	{
+		return CF_41;
+	}
+	else if(kCFCoreFoundationVersionNumber == 550.52)
+	{
+		return CF_42;
+	}
+	else if(kCFCoreFoundationVersionNumber == 550.58)
+	{
+		return CF_43;
+	}
+	else if(kCFCoreFoundationVersionNumber == 675.00) //661.00
+	{
+		return CF_50;
+	}
+	else if(kCFCoreFoundationVersionNumber == 690.10)
+	{
+		return CF_51;
+	}
+	else if(kCFCoreFoundationVersionNumber == 793.00)
+	{
+		return CF_60;
+	}
+	else if(kCFCoreFoundationVersionNumber > 793.00)
+	{
+		CommonLog("CoreFoundation = %f", kCFCoreFoundationVersionNumber);
+		return CF_60;
+	}
+	else
+	{
+		CommonLog("CoreFoundation = %f", kCFCoreFoundationVersionNumber);
+	}
+	
+	return CF_NONE;
+}
+
 __attribute__((constructor)) void start()
 {
-	NSLine();
+//	NSLine();
+	
+	cfvers = QuantizeCFVers();
 	
 	// get classes
 	Classes_Fetch();
@@ -378,8 +523,13 @@ __attribute__((constructor)) void start()
 			HOOKCLASSMESSAGE(UIStatusBarItem, itemWithType:, itemWithType$);
 		}
 		
+		if(cfvers < CF_60)
 		{
 			HOOKMESSAGE(UIStatusBarForegroundView, _computeVisibleItems:eitherSideItems:, _computeVisibleItems$eitherSideItems$);
+		}
+		else
+		{
+			HOOKMESSAGE(UIStatusBarForegroundView, _computeVisibleItemsPreservingHistory:, _computeVisibleItemsPreservingHistory$);	
 		}
 		{
 			if([$UIStatusBarLayoutManager instancesRespondToSelector: @selector(_viewForItem:creatingIfNecessary:)])
@@ -393,6 +543,12 @@ __attribute__((constructor)) void start()
 				HOOKMESSAGE(UIStatusBarLayoutManager, prepareEnabledItems:withData:actions:, prepareEnabledItems$withData$actions$);
 			
 			HOOKMESSAGE(UIStatusBarLayoutManager, _itemViews, _itemViews);
+			/*
+			if(cfvers >= CF_60)
+			{
+				HOOKMESSAGE(UIStatusBarLayoutManager, rectForItems:, rectForItems$);
+			}
+			*/
 		
 			HOOKMESSAGE(UIStatusBarTimeItemView, updateForNewData:actions:, updateForNewData$actions$);
 			HOOKMESSAGE(UIStatusBarTimeItemView, contentsImageForStyle:, contentsImageForStyle$);

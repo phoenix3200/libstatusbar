@@ -28,6 +28,30 @@
 		NSLog(@"%@* " #obj  ";", [obj description])
 	#define NSRect(obj) \
 		NSLog(@ #obj " = {{%f %f}{%f %f}}", obj.origin.x, obj.origin.y, obj.size.width, obj.size.height)
+	#define CommonLog(fmt, ...) \
+		{ \
+			syslog(5, fmt, ##__VA_ARGS__); \
+			fprintf(stderr, fmt "\n", ##__VA_ARGS__); \
+		}
+
+	#define TRACE() \
+	{ \
+		void* bt; \
+		__asm__("mov %0, lr": "=r"(bt)); \
+		Dl_info info; \
+		dladdr((void*)bt, &info); \
+		char* fname = strrchr(info.dli_fname, '/'); \
+		if(fname) \
+			fname++;\
+		if(info.dli_sname) \
+		{ \
+			CommonLog("%s: %s: %s %08x (%s + %08x)", __FILE__, __FUNCTION__, fname, (uint32_t)bt - (uint32_t)info.dli_fbase, info.dli_sname, (uint32_t) bt - (uint32_t) info.dli_saddr); \
+		} \
+		else \
+		{ \
+			CommonLog("%s: %s: %s %08x (unknown)", __FILE__, __FUNCTION__, fname, (uint32_t)bt - (uint32_t)info.dli_fbase); \
+		} \
+	}
 #else
 	#define NSLine()
 	#define NSLog(...)
@@ -36,6 +60,8 @@
 	#define NSType(...)
 	#define NSDesc(...)
 	#define NSRect(...)
+	#define CommonLog(...)
+	#define TRACE()
 #endif
 
 

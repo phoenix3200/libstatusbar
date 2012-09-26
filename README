@@ -18,6 +18,8 @@ Silver: /System/Library/Frameworks/UIKit.framework/ColorOnGrayShadow_<name>.png
 Black:  /System/Library/Frameworks/UIKit.framework/WhiteOnBlackEtch_<name>.png
 Notif.: /System/Library/Frameworks/UIKit.framework/WhiteOnBlackShadow_<name>.png
 
+6.x style: The silver statusbar is gone
+
 All styles are cross-compatible, but may not be feature-full.
 
 --- BASIC API ---

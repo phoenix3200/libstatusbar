@@ -1,6 +1,8 @@
 
 #import <Foundation/Foundation.h>
 #import <UIKit/UIKit.h>
+#import <syslog.h>
+
 extern "C" UIApplication* UIApp;
 #import "UIApplication_libstatusbar.h"
 @interface UIApplication (statusbar)
