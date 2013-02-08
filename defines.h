@@ -36,21 +36,30 @@
 
 	#define TRACE() \
 	{ \
-		void* bt; \
-		__asm__("mov %0, lr": "=r"(bt)); \
-		Dl_info info; \
-		dladdr((void*)bt, &info); \
-		char* fname = strrchr(info.dli_fname, '/'); \
-		if(fname) \
-			fname++;\
-		if(info.dli_sname) \
-		{ \
-			CommonLog("%s: %s: %s %08x (%s + %08x)", __FILE__, __FUNCTION__, fname, (uint32_t)bt - (uint32_t)info.dli_fbase, info.dli_sname, (uint32_t) bt - (uint32_t) info.dli_saddr); \
-		} \
-		else \
-		{ \
-			CommonLog("%s: %s: %s %08x (unknown)", __FILE__, __FUNCTION__, fname, (uint32_t)bt - (uint32_t)info.dli_fbase); \
-		} \
+		NSArray* callStackReturnAddresses = [NSThread callStackReturnAddresses];	\
+		int ncallStackReturnAddresses = [callStackReturnAddresses count];	\
+		for(int level =0; level < ncallStackReturnAddresses; level++) \
+		{	\
+			NSNumber* addr = [callStackReturnAddresses objectAtIndex: level];	\
+			uint32_t bt = [addr unsignedIntValue];	\
+			Dl_info info; \
+			dladdr((void*)bt, &info); \
+			char* fname = strrchr(info.dli_fname, '/'); \
+			if(fname) \
+				fname++;\
+			if(info.dli_sname) \
+			{ \
+				CommonLog("%d: %s %08x (%s + %08x)", level, fname, (uint32_t)bt - (uint32_t)info.dli_fbase, info.dli_sname, (uint32_t) bt - (uint32_t) info.dli_saddr); \
+			} \
+			else if(fname)\
+			{ \
+				CommonLog("%d: %s %08x (unknown)", level, fname, (uint32_t)bt - (uint32_t)info.dli_fbase); \
+			} \
+			else	\
+			{	\
+				CommonLog("%d: (unknown) %08x (unknown)", level, (uint32_t)bt); \
+			}	\
+		}	\
 	}
 #else
 	#define NSLine()
@@ -64,6 +73,39 @@
 	#define TRACE()
 #endif
 
+	#define CommonLog_F(fmt, ...) \
+		{ \
+			syslog(5, fmt, ##__VA_ARGS__); \
+			fprintf(stderr, fmt "\n", ##__VA_ARGS__); \
+		}
+
+	#define TRACE_F() \
+	{ \
+		NSArray* callStackReturnAddresses = [NSThread callStackReturnAddresses];	\
+		int ncallStackReturnAddresses = [callStackReturnAddresses count];	\
+		for(int level =0; level < ncallStackReturnAddresses; level++) \
+		{	\
+			NSNumber* addr = [callStackReturnAddresses objectAtIndex: level];	\
+			uint32_t bt = [addr unsignedIntValue];	\
+			Dl_info info; \
+			dladdr((void*)bt, &info); \
+			char* fname = strrchr(info.dli_fname, '/'); \
+			if(fname) \
+				fname++;\
+			if(info.dli_sname) \
+			{ \
+				CommonLog_F("%d: %s %08x (%s + %08x)", level, fname, (uint32_t)bt - (uint32_t)info.dli_fbase, info.dli_sname, (uint32_t) bt - (uint32_t) info.dli_saddr); \
+			} \
+			else if(fname)\
+			{ \
+				CommonLog_F("%d: %s %08x (unknown)", level, fname, (uint32_t)bt - (uint32_t)info.dli_fbase); \
+			} \
+			else	\
+			{	\
+				CommonLog_F("%d: (unknown) %08x (unknown)", level, (uint32_t)bt); \
+			}	\
+		}	\
+	}
 
 #define HOOKDEF(type, class, name, args...) \
 static type (*_ ## class ## $ ## name)(class *self, SEL sel, ## args); \

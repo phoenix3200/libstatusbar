@@ -43,7 +43,7 @@ UIImage* UIStatusBarCustomItemView$contentsImageForStyle$(id self, SEL sel, int 
 		NSString* styleStr = isBlack ? @"Black" : @"Silver";
 		NSString *imageName = [NSString stringWithFormat: @"%@_%@.png", styleStr, itemName];
 	//	ret = [UIImage imageNamed: imageName inBundle: kitbundle];
-		ret = [UIImage kitImageNamed: imageName];
+		ret = [$UIImage kitImageNamed: imageName];
 	}
 	
 	if(!ret) // try iOS 5 naming convention
@@ -70,7 +70,7 @@ UIImage* UIStatusBarCustomItemView$contentsImageForStyle$(id self, SEL sel, int 
 		NSString *imageName = [NSString stringWithFormat: @"%@_%@.png", styleStr, itemName];
 		NSLog(@"searching for image named %@", imageName);
 //		ret = [UIImage imageNamed: imageName inBundle: kitbundle];
-		ret = [UIImage kitImageNamed: imageName];
+		ret = [$UIImage kitImageNamed: imageName];
 	}
 	
 	// try SB folder naming convention
@@ -80,7 +80,7 @@ UIImage* UIStatusBarCustomItemView$contentsImageForStyle$(id self, SEL sel, int 
 		
 		NSString *imageName = [NSString stringWithFormat: @"%@_%@.png", styleStr, itemName];
 		NSBundle* bundle = [NSBundle bundleWithPath: @"/System/Library/CoreServices/SpringBoard.app"];
-		ret = [UIImage imageNamed: imageName inBundle: bundle];
+		ret = [$UIImage imageNamed: imageName inBundle: bundle];
 	}
 
 	if(!ret)

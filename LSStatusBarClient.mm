@@ -16,6 +16,12 @@ void UpdateStatusBar(CFNotificationCenterRef center, LSStatusBarClient* client)
 	[client updateStatusBar];
 }
 
+void ResubmitContent(CFNotificationCenterRef center, LSStatusBarClient* client)
+{
+	[client resubmitContent];
+}
+
+
 @implementation LSStatusBarClient
 
 + (id) sharedInstance
@@ -24,7 +30,15 @@ void UpdateStatusBar(CFNotificationCenterRef center, LSStatusBarClient* client)
 	
 	if(!client)
 	{
-		client = [[self alloc] init];
+		if(sandbox_check(getpid(), "mach-lookup", (sandbox_filter_type) (SANDBOX_FILTER_LOCAL_NAME | SANDBOX_CHECK_NO_REPORT), "com.apple.springboard.libstatusbar"))
+		{
+			CommonLog_F("******SANDBOX FORBADE MACH LOOKUP.  LIBSTATUSBAR MAY CRASH IN THIS PROCESS********\n");
+			TRACE_F();
+		}
+		else
+		{
+			client = [[self alloc] init];
+		}
 	}
 	return client;
 }
@@ -38,9 +52,10 @@ void UpdateStatusBar(CFNotificationCenterRef center, LSStatusBarClient* client)
 		
 		CFNotificationCenterRef darwin = CFNotificationCenterGetDarwinNotifyCenter();
 		CFNotificationCenterAddObserver(darwin, self, (CFNotificationCallback) UpdateStatusBar, (CFStringRef) @"libstatusbar_changed", NULL, NULL);
+
+		CFNotificationCenterAddObserver(darwin, self, (CFNotificationCallback) ResubmitContent, CFSTR("SBSpringBoardDidLaunchNotification"), NULL, NULL);
 		
 		[self updateStatusBar];
-		
 	}
 	return self;
 }
@@ -226,19 +241,24 @@ void UpdateStatusBar(CFNotificationCenterRef center, LSStatusBarClient* client)
 	[self retrieveCurrentMessage];
 	
 	// need a decent guard band because we do call before UIApp exists
-	if([self processCurrentMessage] && UIApp)
+	if($UIApplication && [$UIApplication sharedApplication] && [self processCurrentMessage])
 	{
-		UIStatusBarForegroundView* _foregroundView = MSHookIvar<UIStatusBarForegroundView*>([UIApp statusBar], "_foregroundView");
+		id sb = [[$UIApplication sharedApplication] statusBar];
+		
+		if(!sb)
+			return;
+		
+		UIStatusBarForegroundView* _foregroundView = MSHookIvar<UIStatusBarForegroundView*>(sb, "_foregroundView");
 		if(_foregroundView)
 		{
-			[[UIApp statusBar] forceUpdateData: NO];
+			[sb forceUpdateData: NO];
 			
-			NSLine();
+			//NSLine();
 			GETCLASS(SBBulletinListController);
-			NSLine();
+			//NSLine();
 			if($SBBulletinListController)
 			{
-				NSLine();
+				//NSLine();
 				id listview = [[$SBBulletinListController sharedInstance] listView];
 				NSType(listview);
 				if(listview)
@@ -274,31 +294,79 @@ void UpdateStatusBar(CFNotificationCenterRef center, LSStatusBarClient* client)
 
 - (void) setProperties: (id) properties forItem: (NSString*) item
 {
-//	SelLog();
+	NSLine();
+	//SelLog();
 	if(item)
 	{
-		NSString* bundleId = [[NSBundle mainBundle] bundleIdentifier];
-		
-		if(_isLocal)
+		if(!_submittedMessages)
 		{
-			[[LSStatusBarServer sharedInstance] setProperties: properties forItem: item bundle: bundleId];
+			_submittedMessages = [[NSMutableDictionary alloc] init];
+		}
+		if(properties)
+		{
+			[_submittedMessages setObject: properties forKey: item];
 		}
 		else
 		{
+			[_submittedMessages removeObjectForKey: item];
+		}
+		
+		
+		
+		NSString* bundleId = [[NSBundle mainBundle] bundleIdentifier];
+		if(_isLocal)
+		{
+			[[LSStatusBarServer sharedInstance] setProperties: properties forItem: item bundle: bundleId pid: [NSNumber numberWithInt: 0]];
+		}
+		else
+		{
+			NSNumber* pid = [NSNumber numberWithInt: getpid()];
 			
 			
+			NSMutableDictionary* dict = [[NSMutableDictionary alloc] initWithCapacity: 4];
+			if(item)
+				[dict setObject: item forKey: @"item"];
+			if(pid)
+				[dict setObject: pid forKey: @"pid"];
+			if(properties)
+				[dict setObject: properties forKey: @"properties"];
+			if(bundleId)
+				[dict setObject: bundleId forKey: @"bundle"];
+			/*
 			NSDictionary* dict = [[NSDictionary alloc] initWithObjectsAndKeys:
 									item, @"item",
+									pid, @"pid",
 									properties, @"properties",
 									bundleId, @"bundle",
 									nil];
-		
+			*/
+			NSLog(@"dict = %@", [dict description]);
+			
 			CPDistributedMessagingCenter* dmc = [CPDistributedMessagingCenter centerNamed: @"com.apple.springboard.libstatusbar"];
-		
 			[dmc sendMessageName: @"setProperties:userInfo:" userInfo: dict];
+			NSLine();
 			[dict release];
 		}
 	}
+}
+
+- (void) resubmitContent
+{
+	NSLine();
+	
+	NSDictionary* messages = _submittedMessages;
+	if(!messages)
+		return;
+	
+	_submittedMessages = nil;
+	
+	for(NSString* key in messages)
+	{
+		[self setProperties: [messages objectForKey: key] forItem: key];
+	}
+	
+	[messages release];
+	
 }
 
 @end

@@ -6,6 +6,9 @@
 	NSMutableArray* _currentKeys;
 	NSMutableDictionary* _currentKeyUsage;
 	
+	NSMutableArray* clientPids;
+	
+	
 	CFRunLoopTimerRef timer;
 	bool timeHidden;
 }
@@ -17,7 +20,7 @@
 - (void) appDidExit: (NSString*) bundle;
 
 - (void) setProperties: (NSString*) message userInfo: (NSDictionary*) userInfo;
-- (void) setProperties: (id) properties forItem: (NSString*) item bundle: (NSString*) bundle;
+- (void) setProperties: (id) properties forItem: (NSString*) item bundle: (NSString*) bundle pid: (NSNumber*) pid;
 
 - (NSMutableDictionary*) currentMessage;
 

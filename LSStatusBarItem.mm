@@ -9,6 +9,9 @@
 #import "LSStatusBarClient.h"
 
 
+#import "classes.h"
+
+
 NSMutableDictionary* sbitems = nil;
 
 @implementation LSStatusBarItem
@@ -56,11 +59,12 @@ NSMutableDictionary* sbitems = nil;
 		[NSException raise: NSInternalInconsistencyException format: @"LSStatusBarItem: Alignment not specified"];
 	}
 	
-	if(!UIApp)
+	/*
+	if($UIApplication && ![$UIApplication sharedApplication])
 	{
+		TRACE_F();
 		[NSException raise: NSInternalInconsistencyException format: @"LSStatusBarItem: Wait for UIApp to load!"];
-	}
-	
+	}*/
 	
 	if((self = [super init]))
 	{
@@ -75,6 +79,7 @@ NSMutableDictionary* sbitems = nil;
 		
 			if(!currentMessage)
 			{
+//				TRACE_F();
 				[NSException raise: NSInternalInconsistencyException format: @"LSStatusBarItem: Cannot retrieve the current message!"];
 			}
 			

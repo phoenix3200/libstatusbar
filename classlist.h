@@ -12,3 +12,5 @@ CLCLASS(UIStatusBarCustomItem);
 
 CLCLASS(UIStatusBarItemView);
 CLCLASS(UIStatusBarTimeItemView);
+
+CLCLASS(UIImage);

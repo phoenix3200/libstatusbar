@@ -18,7 +18,7 @@ Silver: /System/Library/Frameworks/UIKit.framework/ColorOnGrayShadow_<name>.png
 Black:  /System/Library/Frameworks/UIKit.framework/WhiteOnBlackEtch_<name>.png
 Notif.: /System/Library/Frameworks/UIKit.framework/WhiteOnBlackShadow_<name>.png
 
-6.x style: The silver statusbar is gone
+6.x style: Same as 5.x, but the silver statusbar is gone
 
 All styles are cross-compatible, but may not be feature-full.
 
@@ -31,4 +31,12 @@ All styles are cross-compatible, but may not be feature-full.
 
 --- ADVANCED API ---
 
+Libstatusbar also supports the ability to swap out icons, temporarily hide them, and change the statusbar string.
+
 See LSStatusBarItem.h for the API and Testing.mm for example usage
+
+Additionally, Libstatusbar now supports the ability to add and remove icons from daemons.  Use with care.
+
+
+
+

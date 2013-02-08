@@ -3,6 +3,8 @@
 {
 	bool _isLocal;
 	NSDictionary* _currentMessage;
+	NSMutableDictionary* _submittedMessages;
+	
 	NSArray* _titleStrings;
 }
 
@@ -13,6 +15,7 @@
 - (NSDictionary*) currentMessage;
 - (void) retrieveCurrentMessage;
 - (bool) processCurrentMessage;
+- (void) resubmitContent;
 - (void) updateStatusBar;
 
 - (void) setProperties: (id) properties forItem: (NSString*) item;

@@ -344,7 +344,7 @@ HOOKDEF(UIImage*, UIStatusBarTimeItemView, contentsImageForStyle$, int style)
 
 	NSMutableString* timeString = [_timeString mutableCopy];
 	
-	CGSize size = [(UIStatusBar*)[UIApp statusBar] currentFrame].size;
+	CGSize size = [(UIStatusBar*)[[$UIApplication sharedApplication] statusBar] currentFrame].size;
 	float maxlen = (size.width > size.height ? size.width : size.height)*0.6;//0.65;
 	
 	// ellipsize strings if they're too long
@@ -373,6 +373,12 @@ HOOKDEF(UIImage*, UIStatusBarTimeItemView, contentsImageForStyle$, int style)
 
 #pragma mark Client startup
 
+
+//UIApplication* UIApp;
+
+//_startWindowServerIfNecessary
+
+
 HOOKDEF(void, UIApplication, _startWindowServerIfNecessary)
 {
 //	SelLog();
@@ -381,8 +387,12 @@ HOOKDEF(void, UIApplication, _startWindowServerIfNecessary)
 	static BOOL hasAlreadyRan = NO;
 	if(hasAlreadyRan)
 	{
-		NSLog(@"Warning: _startWindowServerIfNecessary called twice!");
+		CommonLog_F("Warning: UIApplication _startWindowServerIfNecessary called twice!");
 		return;
+	}
+	else
+	{
+//		UIApp = [$UIApplication sharedApplication];
 	}
 	hasAlreadyRan = YES;
 	
@@ -503,11 +513,23 @@ CFVers QuantizeCFVers()
 	return CF_NONE;
 }
 
+
+
+
 __attribute__((constructor)) void start()
 {
 //	NSLine();
 	
 	cfvers = QuantizeCFVers();
+	
+	if(cfvers > CF_50)
+	{
+		if(sandbox_check(getpid(), "mach-lookup", (sandbox_filter_type) (SANDBOX_FILTER_LOCAL_NAME | SANDBOX_CHECK_NO_REPORT), "com.apple.springboard.libstatusbar"))
+		{
+			CommonLog_F("******SANDBOX FORBADE MACH LOOKUP.  LIBSTATUSBAR MAY CRASH IN THIS PROCESS********\n");
+			return;
+		}
+	}
 	
 	// get classes
 	Classes_Fetch();
@@ -570,6 +592,14 @@ __attribute__((constructor)) void start()
 			GETCLASS(SBApplication);
 			HOOKMESSAGE(SBApplication, exitedCommon, exitedCommon);
 		}
+	}
+	else if(!$UIApplication)
+	{
+		CommonLog_F("Libstatusbar NOT loading on a UIKit process.");
+	}
+	else
+	{
+		
 	}
 }
 

@@ -3,7 +3,19 @@
 #import <UIKit/UIKit.h>
 #import <syslog.h>
 
-extern "C" UIApplication* UIApp;
+
+#import <mach/mach.h>
+
+
+
+#include <sys/event.h>
+
+
+
+//extern "C" UIApplication* UIApp;
+//extern UIApplication* UIApp;
+
+
 #import "UIApplication_libstatusbar.h"
 @interface UIApplication (statusbar)
 - (UIStatusBar*) statusBar;
@@ -19,16 +31,30 @@ extern "C" int SBSSpringBoardServerPort();
 
 #import <notify.h>
 
-#import "UIStatusBarLayoutManager.h"
-#import "UIStatusBarItem.h"
-#import "UIStatusBarItemView.h"
-#import "UIStatusBarForegroundView.h"
-#import "UIStatusBarServer.h"
+#import <unistd.h>
 
-#import "UIStatusBar.h"
-#import "UIStatusBarTimeItemView.h"
+#import "UIKIT/UIStatusBarLayoutManager.h"
+#import "UIKIT/UIStatusBarItem.h"
+#import "UIKIT/UIStatusBarItemView.h"
+#import "UIKIT/UIStatusBarForegroundView.h"
+#import "UIKIT/UIStatusBarServer.h"
+
+#import "UIKIT/UIStatusBar.h"
+#import "UIKIT/UIStatusBarTimeItemView.h"
 
 #import "CPDistributedMessagingCenter.h"
+
+
+enum sandbox_filter_type {
+	SANDBOX_FILTER_NONE = 0,
+	SANDBOX_FILTER_PATH = 1,
+	SANDBOX_FILTER_GLOBAL_NAME  =2,
+	SANDBOX_FILTER_LOCAL_NAME = 3,
+	SANDBOX_CHECK_NO_REPORT = 0x40000000
+};
+
+extern "C" int sandbox_check(pid_t pid, const char *operation, enum sandbox_filter_type type, ...);
+
 
 // structures listed here are NOT valid for iOS 4.2+ - at least two more "items" exist
 /*

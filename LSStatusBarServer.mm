@@ -151,21 +151,85 @@ void incrementTimer()//CFRunLoopTimerRef timer, LSStatusBarServer* self)
 	//[self performSelector: @selector(postChanged) withObject: nil afterDelay: 0.0f];
 }
 
-- (void) setProperties: (id) properties forItem: (NSString*) item bundle: (NSString*) bundle
+
+
+
+static void NoteExitKQueueCallback(
+    CFFileDescriptorRef f, 
+    CFOptionFlags       callBackTypes, 
+    NSNumber *              pidinfo
+)
+{
+//    struct kevent   event;
+//    (void) kevent( CFFileDescriptorGetNativeDescriptor(f), NULL, 0, &event, 1, NULL);
+//    NSLog(@"terminated %d", (int) (pid_t) event.ident);
+
+    [[LSStatusBarServer sharedInstance] pidDidExit: [pidinfo autorelease]];
+}
+
+
+void MonitorPID(NSNumber* pid)
+{
+    FILE *                  f;
+    int                     kq;
+    struct kevent           changes;
+    CFFileDescriptorContext context = { 0, [pid retain], NULL, NULL, NULL };
+    CFRunLoopSourceRef      rls;
+
+
+    kq = kqueue();
+
+    EV_SET(&changes, [pid intValue], EVFILT_PROC, EV_ADD | EV_RECEIPT, NOTE_EXIT, 0, NULL);
+    (void) kevent(kq, &changes, 1, &changes, 1, NULL);
+
+    CFFileDescriptorRef noteExitKQueueRef = CFFileDescriptorCreate(NULL, kq, true, (CFFileDescriptorCallBack) NoteExitKQueueCallback, &context);
+    rls = CFFileDescriptorCreateRunLoopSource(NULL, noteExitKQueueRef, 0);
+    CFRunLoopAddSource(CFRunLoopGetCurrent(), rls, kCFRunLoopDefaultMode);
+    CFRelease(rls);
+
+    CFFileDescriptorEnableCallBacks(noteExitKQueueRef, kCFFileDescriptorReadCallBack);
+
+}
+
+
+- (void) registerPid: (NSNumber*) thepid
+{
+	int pid = [thepid intValue];
+	if(!pid)
+		return;
+	
+	if(!clientPids)
+	{
+		clientPids = [[NSMutableArray alloc] init];
+	}
+	if(![clientPids containsObject: thepid])
+	{
+		[clientPids addObject: thepid];
+		
+		MonitorPID(thepid);
+			
+	}
+}
+
+- (void) setProperties: (id) properties forItem: (NSString*) item bundle: (NSString*) bundle pid: (NSNumber*) pid
 {
 //	SelLog();
-	if(!item || !bundle)
+	if(!item || !pid)
 	{
-		NSLog(@"missing info. returning...");
+		NSLog(@"missing info. returning... %@ %@", [item description], [pid description]);
 		return;
 	}
 	
+	[self registerPid: pid];
+	
 	// get the current item usage by bundles
-	NSMutableArray* bundles = [_currentKeyUsage objectForKey: item];
-	if(!bundles)
+	
+	
+	NSMutableArray* pids = [_currentKeyUsage objectForKey: item];
+	if(!pids)
 	{
-		bundles = [NSMutableArray array];
-		[_currentKeyUsage setObject: bundles forKey: item];
+		pids = [NSMutableArray array];
+		[_currentKeyUsage setObject: pids forKey: item];
 	}
 	
 	int itemIdx = [_currentKeys indexOfObject: item];
@@ -175,9 +239,9 @@ void incrementTimer()//CFRunLoopTimerRef timer, LSStatusBarServer* self)
 	{
 		[_currentMessage setValue: properties forKey: item];
 		
-		if(![bundles containsObject: bundle])
+		if(![pids containsObject: pid])
 		{
-			[bundles addObject: bundle];
+			[pids addObject: pid];
 		}
 		
 		if(itemIdx == NSNotFound)
@@ -187,10 +251,10 @@ void incrementTimer()//CFRunLoopTimerRef timer, LSStatusBarServer* self)
 	}
 	else
 	{
-		[bundles removeObject: bundle];
+		[pids removeObject: pid];
 		NSLog(@"removing object");
 		
-		if([bundles count]==0)
+		if([pids count]==0)
 		{
 			// object is truly dead
 			[_currentMessage setValue: nil forKey: item];
@@ -218,6 +282,42 @@ void incrementTimer()//CFRunLoopTimerRef timer, LSStatusBarServer* self)
 	[self processMessageCommonWithFocus: item];
 }
 
+- (void) pidDidExit: (NSNumber*) pid
+{
+	NSLine();
+	
+	int nKeys = [_currentKeys count];
+	for(int i=nKeys - 1; i>=0; i--)
+	{
+		NSString* item = [_currentKeys objectAtIndex: i];
+		
+		NSMutableArray* pids = [_currentKeyUsage objectForKey: item];
+		if(!pids)
+		{
+			continue;
+		}
+
+		if([pids containsObject: pid])
+		{
+			[pids removeObject: pid];
+			NSLog(@"removing object");
+
+			if([pids count]==0)
+			{
+				// object is truly dead
+				[_currentMessage setValue: nil forKey: item];
+
+				int itemIdx = [_currentKeys indexOfObject: item];
+				if(itemIdx!=NSNotFound)
+					[_currentKeys removeObjectAtIndex: itemIdx];
+			}
+		}
+	}
+	
+	[self processMessageCommonWithFocus: nil];
+	
+}
+
 
 - (void) appDidExit: (NSString*) bundle
 {
@@ -228,18 +328,18 @@ void incrementTimer()//CFRunLoopTimerRef timer, LSStatusBarServer* self)
 	{
 		NSString* item = [_currentKeys objectAtIndex: i];
 		
-		NSMutableArray* bundles = [_currentKeyUsage objectForKey: item];
-		if(!bundles)
+		NSMutableArray* pids = [_currentKeyUsage objectForKey: item];
+		if(!pids)
 		{
 			continue;
 		}
 
-		if([bundles containsObject: bundle])
+		if([pids containsObject: bundle])
 		{
-			[bundles removeObject: bundle];
+			[pids removeObject: bundle];
 			NSLog(@"removing object");
 
-			if([bundles count]==0)
+			if([pids count]==0)
 			{
 				// object is truly dead
 				[_currentMessage setValue: nil forKey: item];
@@ -262,8 +362,9 @@ void incrementTimer()//CFRunLoopTimerRef timer, LSStatusBarServer* self)
 	NSString* item = [userInfo objectForKey: @"item"];
 	NSDictionary* properties = [userInfo objectForKey: @"properties"];
 	NSString* bundleId = [userInfo objectForKey: @"bundle"];
+	NSNumber* pid = [userInfo objectForKey: @"pid"];
 	
-	[self setProperties: properties forItem: item bundle: bundleId];
+	[self setProperties: properties forItem: item bundle: bundleId pid: pid];
 }
 
 
