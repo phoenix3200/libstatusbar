@@ -17,33 +17,21 @@ NSMutableDictionary* sbitems = nil;
 @implementation LSStatusBarItem
 
 
-+ (void) _updateItems
++ (void) _updateProperties: (NSMutableDictionary*) dict forIdentifier: (NSString*) identifier
 {
-	NSDictionary* currentMessage = [[LSStatusBarClient sharedInstance] currentMessage];
-	
-	if(!currentMessage)
-	{
-		return;
-	}
 	
 	if(!sbitems)
 	{
 		sbitems = [NSMutableDictionary new];
 	}
 	
-	for(NSString* key in sbitems)
+	
+	NSArray* idArray = [sbitems objectForKey: identifier];
+	for(LSStatusBarItem* item in idArray)
 	{
-		NSDictionary* dict = [currentMessage objectForKey: key];
-		
-		if(dict && [dict isKindOfClass: [NSDictionary class]])
-		{
-			NSArray* idArray = [sbitems objectForKey: key];
-			for(LSStatusBarItem* item in idArray)
-			{
-				[item _setProperties: dict];
-			}
-		}
+		[item _setProperties: dict];
 	}
+	
 }
 
 
@@ -68,28 +56,25 @@ NSMutableDictionary* sbitems = nil;
 	
 	if((self = [super init]))
 	{
-		// get the current message
-		NSDictionary* currentMessage;
+		
+		if(!sbitems)
 		{
-			LSStatusBarClient* client = [LSStatusBarClient sharedInstance];
-		
-			currentMessage = [client currentMessage];
-			if(!currentMessage)
-				[client retrieveCurrentMessage];
-		
-			if(!currentMessage)
-			{
-//				TRACE_F();
-				[NSException raise: NSInternalInconsistencyException format: @"LSStatusBarItem: Cannot retrieve the current message!"];
-			}
-			
+			sbitems = [NSMutableDictionary new];
 		}
+		
+		
+		NSMutableArray* idArray = [sbitems objectForKey: identifier];
+		LSStatusBarItem* item = idArray ? [idArray count] ? [idArray objectAtIndex: 0] : nil : nil;
+		NSMutableDictionary* properties = item ? [item properties] : nil;
+		if(!properties)
+			properties = [NSMutableDictionary new];
+		
 		
 		// save all the settings
 		{
 			_identifier = [identifier retain];
 			
-			[self _setProperties: [currentMessage objectForKey: _identifier]];
+			[self _setProperties: properties];
 			
 			NSNumber* align = [_properties objectForKey: @"alignment"];
 			if(!align)
@@ -104,10 +89,6 @@ NSMutableDictionary* sbitems = nil;
 		
 		// keep track of StatusBarItem(s)
 		{
-			if(!sbitems)
-			{
-				sbitems = [NSMutableDictionary new];
-			}
 			
 			NSMutableArray* idArray = [sbitems objectForKey: identifier];
 			if(!idArray)
@@ -155,9 +136,16 @@ NSMutableDictionary* sbitems = nil;
 	[super dealloc];
 }
 
+- (NSDictionary*) properties
+{
+	return _properties;
+}
+
 
 - (void) _setProperties: (NSDictionary*) dict
 {
+	if(dict == _properties)
+		return;
 	[_properties release];
 	if(!dict)
 	{
@@ -192,10 +180,14 @@ NSMutableDictionary* sbitems = nil;
 
 - (void) setHidesTime: (BOOL) hidesTime
 {
-	[_properties setObject: [NSNumber numberWithBool: hidesTime] forKey: @"hidesTime"];
-	
-	if(!_manualUpdate)
-		[self update];
+	NSNumber* oldTime = [_properties objectForKey: @"imageName"];
+	if([oldTime boolValue] != hidesTime)
+	{
+		[_properties setObject: [NSNumber numberWithBool: hidesTime] forKey: @"hidesTime"];
+		
+		if(!_manualUpdate)
+			[self update];
+	}
 }
 
 - (BOOL) hidesTime
@@ -248,6 +240,24 @@ NSMutableDictionary* sbitems = nil;
 	}
 }
 
+- (void) setCustomViewClass: (NSString*) customViewClass
+{
+	NSString* oldClass = [_properties objectForKey: @"customViewClass"];
+	
+	if(oldClass)
+		[NSException raise: NSInternalInconsistencyException format: @"LSStatusBarItem: Item already has a custom view class!"];	
+	
+	[_properties setValue: customViewClass forKey: @"customViewClass"];	
+	
+	if(!_manualUpdate)
+		[self update];
+}
+
+- (NSString*) customViewClass
+{
+	return [_properties objectForKey: @"customViewClass"];
+}
+
 - (NSString*) titleString
 {
 	return [_properties objectForKey: @"titleString"];
@@ -268,6 +278,9 @@ NSMutableDictionary* sbitems = nil;
 {
 	SelLog();	
 	[[LSStatusBarClient sharedInstance] setProperties: _properties forItem: _identifier];
+	
+	[LSStatusBarItem _updateProperties: _properties forIdentifier: _identifier];
+
 }
 
 

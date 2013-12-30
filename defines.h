@@ -73,12 +73,19 @@
 	#define TRACE()
 #endif
 
+	#define PROFILE(increment_var)	\
+		for(timeval tim1 = (struct timeval){0}, tim2 = (struct timeval){0}; \
+				!gettimeofday(&tim1, NULL) && !tim2.tv_sec; \
+				gettimeofday(&tim2, NULL), increment_var += tim2.tv_usec - tim1.tv_usec + (tim2.tv_sec-tim1.tv_sec)*1000000)
+	
+	
 	#define CommonLog_F(fmt, ...) \
 		{ \
 			syslog(5, fmt, ##__VA_ARGS__); \
 			fprintf(stderr, fmt "\n", ##__VA_ARGS__); \
 		}
 
+#if !defined(__arm64__)
 	#define TRACE_F() \
 	{ \
 		NSArray* callStackReturnAddresses = [NSThread callStackReturnAddresses];	\
@@ -106,6 +113,37 @@
 			}	\
 		}	\
 	}
+#else
+	#define TRACE_F() \
+	{ \
+		NSArray* callStackReturnAddresses = [NSThread callStackReturnAddresses];	\
+		int ncallStackReturnAddresses = [callStackReturnAddresses count];	\
+		for(int level =0; level < ncallStackReturnAddresses; level++) \
+		{	\
+			NSNumber* addr = [callStackReturnAddresses objectAtIndex: level];	\
+			uint64_t bt = [addr unsignedLongValue];	\
+			Dl_info info; \
+			dladdr((void*)bt, &info); \
+			char* fname = strrchr(info.dli_fname, '/'); \
+			if(fname) \
+				fname++;\
+			if(info.dli_sname) \
+			{ \
+				CommonLog_F("%d: %s %016llx (%s + %016llx)", level, fname, (uint64_t)bt - (uint64_t)info.dli_fbase, info.dli_sname, (uint64_t) bt - (uint64_t) info.dli_saddr); \
+			} \
+			else if(fname)\
+			{ \
+				CommonLog_F("%d: %s %016llx (unknown)", level, fname, (uint64_t)bt - (uint64_t)info.dli_fbase); \
+			} \
+			else	\
+			{	\
+				CommonLog_F("%d: (unknown) %016llx (unknown)", level, (uint64_t)bt); \
+			}	\
+		}	\
+	}
+
+#endif
+
 
 #define HOOKDEF(type, class, name, args...) \
 static type (*_ ## class ## $ ## name)(class *self, SEL sel, ## args); \
@@ -120,11 +158,14 @@ _ ## class ## $ ## name(self, sel, ## args)
 #define GETCLASS(class) \
 Class $ ## class  = objc_getClass(#class)
 
+
 #define HOOKMESSAGE(class, sel, selnew) \
-_ ## class ## $ ## selnew = MSHookMessage( $ ## class, @selector(sel), &$ ## class ## $ ## selnew);
+MSHookMessageEx( $ ## class, @selector(sel), (IMP)$ ## class ## $ ## selnew, (IMP*)&_ ## class ## $ ## selnew);
+//_ ## class ## $ ## selnew = MSHookMessage( $ ## class, @selector(sel), &$ ## class ## $ ## selnew);
 
 #define HOOKCLASSMESSAGE(class, sel, selnew) \
-_ ## class ## $ ## selnew = MSHookMessage( object_getClass($ ## class), @selector(sel), &$ ## class ## $ ## selnew);
+MSHookMessageEx( object_getClass($ ## class), @selector(sel), (IMP)$ ## class ## $ ## selnew, (IMP*)&_ ## class ## $ ## selnew);
+//_ ## class ## $ ## selnew = MSHookMessage( object_getClass($ ## class), @selector(sel), &$ ## class ## $ ## selnew);
 
 #define IVGETVAR(type, name); \
 static type name; \

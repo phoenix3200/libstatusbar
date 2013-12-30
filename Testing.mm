@@ -1,6 +1,6 @@
 
 
-#define TESTING
+//#define TESTING
 
 #import "common.h"
 #import "defines.h"
@@ -17,14 +17,22 @@ void addPlay()
 	SelLog();
 	
 	playItem =  [[LSStatusBarItem alloc] initWithIdentifier: @"libstatusbar.Play" alignment: StatusBarAlignmentLeft];
-	playItem.imageName = @"Play";
+	playItem.imageName = @"3_WifiBars";//Play";
+	
+	
+	[[$UIApplication sharedApplication] addStatusBarImageNamed: @"Pause"];//Siri"];
+	[[$UIApplication sharedApplication] addStatusBarImageNamed: @"Lightning"];//Siri"];
+	
 }
 
 void playToBT()
 {
 	SelLog();
+	playItem.imageName = @"Bluetooth";//Siri";
 	
-	playItem.imageName = @"Siri";
+//	[[$UIApplication sharedApplication] removeStatusBarImageNamed: @"Pause"];//Siri"];
+//	[[$UIApplication sharedApplication] addStatusBarImageNamed: @"Pause"];//Siri"];
+
 }
 
 LSStatusBarItem* centerItem;
@@ -55,14 +63,14 @@ void DelayedTesting()
 {
 	{
 		{
-			float delay = 4.0f;
+			float delay = 8.0f;
 			CFRunLoopTimerCallBack callback = (CFRunLoopTimerCallBack) addPlay;
 		
 			CFRunLoopTimerRef waitTimer = CFRunLoopTimerCreate(kCFAllocatorDefault, CFAbsoluteTimeGetCurrent()+delay, 0.0f, 0, 0, callback, NULL);
 			CFRunLoopAddTimer(CFRunLoopGetMain(), waitTimer, kCFRunLoopCommonModes);
 		}
 		{
-			float delay = 16.0f;
+			float delay = 20.0f;
 			CFRunLoopTimerCallBack callback = (CFRunLoopTimerCallBack) playToBT;
 		
 			CFRunLoopTimerRef waitTimer = CFRunLoopTimerCreate(kCFAllocatorDefault, CFAbsoluteTimeGetCurrent()+delay, 0.0f, 0, 0, callback, NULL);

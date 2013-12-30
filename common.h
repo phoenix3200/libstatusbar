@@ -10,6 +10,9 @@
 
 #include <sys/event.h>
 
+#include <execinfo.h>
+
+#include <sys/time.h>
 
 
 //extern "C" UIApplication* UIApp;
@@ -22,6 +25,7 @@
 @end
 @interface UIImage (kitImageNamed)
 + (UIImage*) kitImageNamed: (NSString*) name;
++ (UIImage*) imageNamed: (NSString*) name inBundle: (NSBundle*) bundle;
 @end
 
 extern "C" int SBSSpringBoardServerPort();
@@ -55,6 +59,25 @@ enum sandbox_filter_type {
 
 extern "C" int sandbox_check(pid_t pid, const char *operation, enum sandbox_filter_type type, ...);
 
+
+
+enum CFVers
+{
+	CF_NONE = 0,
+	CF_30 = 1,
+	CF_31 = 2,
+	CF_32 = 4,
+	CF_40 = 8,
+	CF_41 = 16,
+	CF_42 = 32,
+	CF_43 = 64,
+	CF_50 = 128,
+	CF_51 = 256,
+	CF_60 = 512,
+	CF_70 = 1024,
+};
+
+extern CFVers cfvers;
 
 // structures listed here are NOT valid for iOS 4.2+ - at least two more "items" exist
 /*

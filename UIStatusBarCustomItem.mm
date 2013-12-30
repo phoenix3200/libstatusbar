@@ -33,6 +33,15 @@ int UIStatusBarCustomItem$leftOrder(UIStatusBarCustomItem* self, SEL sel)
 
 Class UIStatusBarCustomItem$viewClass(UIStatusBarCustomItem* self, SEL sel)
 {
+	NSString* customViewClass = [[self properties] objectForKey: @"customViewClass"];
+
+	if(customViewClass)
+	{
+		Class ret = NSClassFromString(customViewClass);
+		if(ret)
+			return ret;
+	}
+	
 	return $UIStatusBarCustomItemView;
 //	return objc_getClass("UIStatusBarCustomItemView");
 //	return objc_getClass("UIStatusBarIndicatorItemView");
@@ -66,7 +75,7 @@ int UIStatusBarCustomItem$priority(UIStatusBarCustomItem* self, SEL sel)
 
 NSString* UIStatusBarCustomItem$description(UIStatusBarCustomItem* self, SEL sel)
 {
-	return @"UIStatusBarCustomItem <No desc yet>";
+	return [NSString stringWithFormat: @"UIStatusBarCustomItem [%@]", [self indicatorName]];
 }
 
 NSString* UIStatusBarCustomItem$indicatorName(UIStatusBarCustomItem* self, SEL sel)
@@ -153,6 +162,9 @@ void ClassCreate_UIStatusBarCustomItem()
 	class_addMethod($UIStatusBarCustomItem, @selector(type), (IMP) UIStatusBarCustomItem$type, "i@:");
 	class_addMethod($UIStatusBarCustomItem, @selector(leftOrder), (IMP)  UIStatusBarCustomItem$leftOrder, "i@:");
 	class_addMethod($UIStatusBarCustomItem, @selector(viewClass), (IMP)  UIStatusBarCustomItem$viewClass, "#@:");
+	//class_addIvar($UIStatusBarCustomItem, "_properties", sizeof(id), 0x4, "@");
+	
+	
 	class_addMethod($UIStatusBarCustomItem, @selector(rightOrder), (IMP)  UIStatusBarCustomItem$rightOrder, "i@:");
 	class_addMethod($UIStatusBarCustomItem, @selector(priority), (IMP)  UIStatusBarCustomItem$priority, "i@:");
 	class_addMethod($UIStatusBarCustomItem, @selector(description), (IMP)  UIStatusBarCustomItem$description, "@@:");

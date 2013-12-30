@@ -1,5 +1,5 @@
 TWEAK_NAME = libstatusbar
-libstatusbar_OBJCC_FILES = libstatusbar.mm Classes.mm \
+libstatusbar_FILES = libstatusbar.mm Classes.mm \
  							LSStatusBarClient.mm LSStatusBarServer.mm \
 							UIStatusBarCustomItem.mm UIStatusBarCustomItemView.mm \
 							LSStatusBarItem.mm # Testing.mm
@@ -7,17 +7,22 @@ libstatusbar_OBJCC_FILES = libstatusbar.mm Classes.mm \
 
 libstatusbar_PRIVATE_FRAMEWORKS = AppSupport SpringboardServices
 
-libstatusubar_LDFLAGS += -l
+libstatusbar_LDFLAGS += -lsubstrate
 
-#SYSROOT = /Wildcat7B367.dyld_cache
 GO_EASY_ON_ME =1
-SDKVERSION = 4.0
 
-ADDITIONAL_OBJCCFLAGS = -fvisibility=hidden
+# IPHONE_ARCHS = armv6 
+IPHONE_ARCHS = armv6 arm64
+TARGET_IPHONEOS_DEPLOYMENT_VERSION = 4.0
+TARGET_IPHONEOS_DEPLOYMENT_VERSION_arm64 = 7.0
+SDKVERSION_armv6 = 4.0
 
-#ADDITIONAL_OBJCCFLAGS += -IUIKit_40/Headers/
+# THEOS_PLATFORM_SDK_ROOT_armv6 = /Developer
+THEOS_PLATFORM_SDK_ROOT_armv6 = /Applications/Xcode_440.app/Contents/Developer
 
+#SDKVERSION = 3.0
 
-include framework/makefiles/common.mk
-include framework/makefiles/tweak.mk
+# ADDITIONAL_OBJCCFLAGS = -fvisibility=hidden
 
+include framework2/makefiles/common.mk
+include framework2/makefiles/tweak.mk

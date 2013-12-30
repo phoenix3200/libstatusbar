@@ -54,6 +54,8 @@ void incrementTimer()//CFRunLoopTimerRef timer, LSStatusBarServer* self)
 		CFNotificationCenterRef darwin = CFNotificationCenterGetDarwinNotifyCenter();
 		CFNotificationCenterAddObserver(darwin, self, (CFNotificationCallback) updateLockStatus, (CFStringRef) @"com.apple.springboard.lockstate", self, NULL);
 		
+		
+		notify_post("LSBDidLaunchNotification");
 	}
 	return self;
 }
@@ -232,7 +234,7 @@ void MonitorPID(NSNumber* pid)
 		[_currentKeyUsage setObject: pids forKey: item];
 	}
 	
-	int itemIdx = [_currentKeys indexOfObject: item];
+	NSUInteger itemIdx = [_currentKeys indexOfObject: item];
 	
 	
 	if(properties)
@@ -307,7 +309,7 @@ void MonitorPID(NSNumber* pid)
 				// object is truly dead
 				[_currentMessage setValue: nil forKey: item];
 
-				int itemIdx = [_currentKeys indexOfObject: item];
+				NSUInteger itemIdx = [_currentKeys indexOfObject: item];
 				if(itemIdx!=NSNotFound)
 					[_currentKeys removeObjectAtIndex: itemIdx];
 			}
@@ -344,7 +346,7 @@ void MonitorPID(NSNumber* pid)
 				// object is truly dead
 				[_currentMessage setValue: nil forKey: item];
 
-				int itemIdx = [_currentKeys indexOfObject: item];
+				NSUInteger itemIdx = [_currentKeys indexOfObject: item];
 				if(itemIdx!=NSNotFound)
 					[_currentKeys removeObjectAtIndex: itemIdx];
 			}
@@ -368,7 +370,7 @@ void MonitorPID(NSNumber* pid)
 }
 
 
-- (void) setState: (int) newState
+- (void) setState: (NSUInteger) newState
 {
 	uint64_t value = newState;
 	static int token = 0;
@@ -399,7 +401,7 @@ void MonitorPID(NSNumber* pid)
 
 - (void) startTimer
 {
-//	NSLine();
+	NSLine();
 	
 	// is timer already running?
 	if(timer)
@@ -492,7 +494,7 @@ void MonitorPID(NSNumber* pid)
 
 - (void) incrementTimer
 {
-//	NSLine();
+	NSLine();
 	
 	NSArray* titleStrings = [_currentMessage objectForKey: @"titleStrings"];
 	
@@ -514,7 +516,7 @@ void MonitorPID(NSNumber* pid)
 			value = 0;
 		}
 		
-//		NSLog(@"idx = %ld", value);
+		NSLog(@"idx = %ld", value);
 		
 		notify_set_state(token, value);
 		

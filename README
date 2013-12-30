@@ -1,26 +1,35 @@
 Libstatusbar: pwning the statusbar for you.
 
-Libstatusbar is chiefly a compatibility library for 3.x-like statusbar icon support under 4.x, but allows for a more advanced API for custom time strings and icon swapping.
+Libstatusbar is chiefly a compatibility library for 3.x-like statusbar icon support under 4.x++, but allows for a more advanced API for custom time strings and icon swapping.
 
 
 All icons should be placed in either:
 
 3.x style, does not support retina icons:
-Silver: /System/Library/CoreServices/SpringBoard/Default_<name>.png 
-Black:  /System/Library/CoreServices/SpringBoard/FSO_<name>.png
+Silver statusbar: /System/Library/CoreServices/SpringBoard/Default_<name>.png 
+Black statusbar:  /System/Library/CoreServices/SpringBoard/FSO_<name>.png
 
 4.x style, supports retina (@2x) icons:
-Silver: /System/Library/Frameworks/UIKit.framework/Silver_<name>.png
-Black:  /System/Library/Frameworks/UIKit.framework/Black_<name>.png
+Silver statusbar: /System/Library/Frameworks/UIKit.framework/Silver_<name>.png
+Black statusbar:  /System/Library/Frameworks/UIKit.framework/Black_<name>.png
 
 5.x style, additionally supports notification center icons:
-Silver: /System/Library/Frameworks/UIKit.framework/ColorOnGrayShadow_<name>.png
-Black:  /System/Library/Frameworks/UIKit.framework/WhiteOnBlackEtch_<name>.png
-Notif.: /System/Library/Frameworks/UIKit.framework/WhiteOnBlackShadow_<name>.png
+Silver statusbar: /System/Library/Frameworks/UIKit.framework/ColorOnGrayShadow_<name>.png
+Black statusbar:  /System/Library/Frameworks/UIKit.framework/WhiteOnBlackEtch_<name>.png
+Notif. statusbar: /System/Library/Frameworks/UIKit.framework/WhiteOnBlackShadow_<name>.png
 
-6.x style: Same as 5.x, but the silver statusbar is gone
+6.x style: Same as 5.x, but the silver statusbar went poof.
 
-All styles are cross-compatible, but may not be feature-full.
+7.x style: Take a completely black icon and tint it to the appropriate shade.
+/System/Library/Frameworks/UIKit.framework/LockScreen_<name>.png
+/System/Library/Frameworks/UIKit.framework/Black_<name>.png
+
+To support color icons, use the following naming conventions:
+/System/Library/Frameworks/UIKit.framework/LockScreen_<name>_Color.png
+/System/Library/Frameworks/UIKit.framework/Black_<name>_Color.png
+/System/Library/Frameworks/UIKit.framework/White_<name>_Color.png
+
+3.x-6.x styles are cross compatible; 7.x is not.  Blame Apple for royally screwing the pooch by using overlapping names with different meanings (black statusbar vs black icon) vs. the 4.x convention.  So, for 7.x, please change over/update your icons for the new style.
 
 --- BASIC API ---
 

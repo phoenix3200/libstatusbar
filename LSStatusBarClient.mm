@@ -13,12 +13,39 @@
 
 void UpdateStatusBar(CFNotificationCenterRef center, LSStatusBarClient* client)
 {
+//	NSLine();
 	[client updateStatusBar];
 }
 
 void ResubmitContent(CFNotificationCenterRef center, LSStatusBarClient* client)
 {
+//	NSLine();
 	[client resubmitContent];
+	[client updateStatusBar];
+}
+
+
+extern "C" kern_return_t
+bootstrap_look_up(mach_port_t bp, const char* service_name, mach_port_t *sp);
+
+extern "C" mach_port_t bootstrap_port;
+
+mach_port_t LSBServerPort()
+{
+	//mach_port_t bootstrap_port;
+	
+	//int err = task_get_bootstrap_port (mach_task_self (), &boot_port);
+	const char* lookup_name = "com.apple.springboard.libstatusbar";
+	
+	mach_port_t lookup_port = NULL;
+	kern_return_t err = bootstrap_look_up (bootstrap_port, lookup_name, &lookup_port);
+	if(!err)
+		return lookup_port;
+	if(err)
+	{
+		NSLog(@"Could not fetch port: %x", err);
+	}
+	return 0;
 }
 
 
@@ -30,14 +57,25 @@ void ResubmitContent(CFNotificationCenterRef center, LSStatusBarClient* client)
 	
 	if(!client)
 	{
-		if(sandbox_check(getpid(), "mach-lookup", (sandbox_filter_type) (SANDBOX_FILTER_LOCAL_NAME | SANDBOX_CHECK_NO_REPORT), "com.apple.springboard.libstatusbar"))
+		if(!$SpringBoard)
 		{
-			CommonLog_F("******SANDBOX FORBADE MACH LOOKUP.  LIBSTATUSBAR MAY CRASH IN THIS PROCESS********\n");
-			TRACE_F();
+			if(sandbox_check(getpid(), "mach-lookup", (sandbox_filter_type) (SANDBOX_FILTER_LOCAL_NAME | SANDBOX_CHECK_NO_REPORT), "com.apple.springboard.libstatusbar"))
+			{
+				CommonLog_F("******SANDBOX FORBADE MACH LOOKUP.  LIBSTATUSBAR MAY CRASH IN THIS PROCESS********\n");
+				TRACE_F();
+				return nil;
+			}
+			if(sandbox_check(getpid(), "mach-lookup", (sandbox_filter_type) (SANDBOX_FILTER_LOCAL_NAME | SANDBOX_CHECK_NO_REPORT), "com.apple.springboard.services"))
+			{
+				CommonLog_F("******SANDBOX FORBADE MACH LOOKUP.  LIBSTATUSBAR MAY CRASH IN THIS PROCESS********\n");
+				return nil;
+			}
 		}
-		else
+		
 		{
-			client = [[self alloc] init];
+			// I feel so dirty.  But don't want to track where/how it's reentrant.
+			client = [self alloc];
+			[client init];
 		}
 	}
 	return client;
@@ -53,9 +91,10 @@ void ResubmitContent(CFNotificationCenterRef center, LSStatusBarClient* client)
 		CFNotificationCenterRef darwin = CFNotificationCenterGetDarwinNotifyCenter();
 		CFNotificationCenterAddObserver(darwin, self, (CFNotificationCallback) UpdateStatusBar, (CFStringRef) @"libstatusbar_changed", NULL, NULL);
 
-		CFNotificationCenterAddObserver(darwin, self, (CFNotificationCallback) ResubmitContent, CFSTR("SBSpringBoardDidLaunchNotification"), NULL, NULL);
+//		CFNotificationCenterAddObserver(darwin, self, (CFNotificationCallback) ResubmitContent, CFSTR("SBSpringBoardDidLaunchNotification"), NULL, NULL);
+		CFNotificationCenterAddObserver(darwin, self, (CFNotificationCallback) ResubmitContent, CFSTR("LSBDidLaunchNotification"), NULL, NULL);
 		
-		[self updateStatusBar];
+	//	[self performSelector: @selector(updateStatusBar) withObject: nil afterDelay: 0.001f];
 	}
 	return self;
 }
@@ -72,10 +111,18 @@ void ResubmitContent(CFNotificationCenterRef center, LSStatusBarClient* client)
 	{
 		_currentMessage = [[[LSStatusBarServer sharedInstance] currentMessage] retain];
 	}
-	else
-	{	CPDistributedMessagingCenter* dmc = [CPDistributedMessagingCenter centerNamed: @"com.apple.springboard.libstatusbar"];
-	 
+	else if(LSBServerPort())
+	{
+		CPDistributedMessagingCenter* dmc = [CPDistributedMessagingCenter centerNamed: @"com.apple.springboard.libstatusbar"];
 		_currentMessage = [[dmc sendMessageAndReceiveReplyName: @"currentMessage" userInfo: nil] retain];
+	}
+	else if(SBSSpringBoardServerPort())
+	{
+		CommonLog_F("****** UNABLE TO FETCH FROM LSB!");
+	}
+	else
+	{
+		_currentMessage = nil;
 	}
 //	NSDesc(_currentMessage);
 }
@@ -84,6 +131,7 @@ void ResubmitContent(CFNotificationCenterRef center, LSStatusBarClient* client)
 {
 	if(idx < (int)[_titleStrings count])
 	{
+	//	NSLog(@"Fetching index %d of %d", idx, (int)[_titleStrings count]);
 		return [_titleStrings objectAtIndex: idx];
 	}
 	return nil;
@@ -114,9 +162,16 @@ void ResubmitContent(CFNotificationCenterRef center, LSStatusBarClient* client)
 	}
 	*/
 	
-	int keyidx = 24;
+	int keyidx = (cfvers >= CF_70) ? 32 : 24;
 	
-//	NSDesc(_currentMessage);
+	//NSDesc(_currentMessage);
+	
+	
+	
+	
+	
+	
+	
 	extern NSMutableArray* customItems[3];
 	
 	for(int i=0; i<3; i++)
@@ -186,7 +241,8 @@ void ResubmitContent(CFNotificationCenterRef center, LSStatusBarClient* client)
 		{
 //			NSLog(@"adding item: %@", key);
 			
-			UIStatusBarCustomItem* item = [$UIStatusBarItem itemWithType: keyidx++];
+			UIStatusBarCustomItem* item = ((cfvers >= CF_70) ? [$UIStatusBarItem itemWithType: keyidx++ idiom: 0] : [$UIStatusBarItem itemWithType: keyidx++]);
+			
 			[item setIndicatorName: key];
 			
 			NSObject* properties = [_currentMessage objectForKey: key];
@@ -209,7 +265,7 @@ void ResubmitContent(CFNotificationCenterRef center, LSStatusBarClient* client)
 				}
 				[customItems[1] addObject: item];
 			}
-			else
+			else if(item)
 			{
 				if(!customItems[2])
 				{
@@ -236,57 +292,79 @@ void ResubmitContent(CFNotificationCenterRef center, LSStatusBarClient* client)
 
 - (void) updateStatusBar
 {
-	SelLog();
+	if(!$UIApplication)
+		return;
+	
+//	SelLog();
 	
 	[self retrieveCurrentMessage];
 	
 	// need a decent guard band because we do call before UIApp exists
-	if($UIApplication && [$UIApplication sharedApplication] && [self processCurrentMessage])
+	if([self processCurrentMessage])
 	{
-		id sb = [[$UIApplication sharedApplication] statusBar];
-		
-		if(!sb)
-			return;
-		
-		UIStatusBarForegroundView* _foregroundView = MSHookIvar<UIStatusBarForegroundView*>(sb, "_foregroundView");
-		if(_foregroundView)
+		if($UIApplication && [$UIApplication sharedApplication])
 		{
-			[sb forceUpdateData: NO];
+			id sb = [[$UIApplication sharedApplication] statusBar];
 			
-			//NSLine();
-			GETCLASS(SBBulletinListController);
-			//NSLine();
-			if($SBBulletinListController)
+			if(!sb)
+				return;
+			
+			UIStatusBarForegroundView* _foregroundView = MSHookIvar<UIStatusBarForegroundView*>(sb, "_foregroundView");
+			if(_foregroundView)
 			{
 				//NSLine();
-				id listview = [[$SBBulletinListController sharedInstance] listView];
-				NSType(listview);
-				if(listview)
+				[sb forceUpdateData: NO];
+				//NSLine();
+				
+				if(_isLocal)
 				{
-					id _statusBar = MSHookIvar<id>(listview, "_statusBar");
-					[_statusBar forceUpdateData: NO];
+					
+					GETCLASS(SBBulletinListController);
+					//NSLine();
+					if($SBBulletinListController)
+					{
+						//NSLine();
+						id listview = [[$SBBulletinListController sharedInstance] listView];
+						NSType(listview);
+						if(listview)
+						{
+							id _statusBar = MSHookIvar<id>(listview, "_statusBar");
+							[_statusBar forceUpdateData: NO];
+						}
+					}
+					
+					GETCLASS(SBNotificationCenterController);
+					if($SBNotificationCenterController)
+					{
+						id vc = [[$SBNotificationCenterController sharedInstanceIfExists] viewController];
+						if(vc)
+						{
+							//NSLine();
+							id _statusBar = MSHookIvar<id>(vc, "_statusBar");
+							
+							if(_statusBar)
+							{
+								//NSDesc(_statusBar);
+								
+								// forceUpdateData: animated: doesn't work if statusbar._inProcessProvider = 1
+								// bypass and directly do it.
+								
+								void* &_currentRawData(MSHookIvar<void*>(_statusBar, "_currentRawData"));
+								[_statusBar forceUpdateToData: &_currentRawData animated: NO];
+								
+							}
+						}
+					}
 				}
 			}
+
+			// ???
 			
 			
-			/*
-			//[_foregroundView _reflowItemViewsWithDuration: 0.0f suppressCenterAnimation: YES];
-			
-			[_foregroundView startIgnoringData];
-			[_foregroundView stopIgnoringData: YES];
-			
-			
-			
-			
-			StatusBarData* data = (StatusBarData*) [$UIStatusBarServer getStatusBarData];
-			
-			if(data)
-			//	[_foregroundView setStatusBarData: data actions: 1 animated: YES];
-				[_foregroundView setStatusBarData: data actions: 0 animated: NO];
-				*/
+			//[LSStatusBarItem _updateItems];
 		}
 		
-		[LSStatusBarItem _updateItems];
+
 	}
 	
 //	
@@ -294,7 +372,7 @@ void ResubmitContent(CFNotificationCenterRef center, LSStatusBarClient* client)
 
 - (void) setProperties: (id) properties forItem: (NSString*) item
 {
-	NSLine();
+//	NSLine();
 	//SelLog();
 	if(item)
 	{
@@ -318,7 +396,8 @@ void ResubmitContent(CFNotificationCenterRef center, LSStatusBarClient* client)
 		{
 			[[LSStatusBarServer sharedInstance] setProperties: properties forItem: item bundle: bundleId pid: [NSNumber numberWithInt: 0]];
 		}
-		else
+		else if(LSBServerPort())
+		//else if(SBSSpringBoardServerPort())
 		{
 			NSNumber* pid = [NSNumber numberWithInt: getpid()];
 			
@@ -340,19 +419,23 @@ void ResubmitContent(CFNotificationCenterRef center, LSStatusBarClient* client)
 									bundleId, @"bundle",
 									nil];
 			*/
-			NSLog(@"dict = %@", [dict description]);
+			//NSLog(@"dict = %@", [dict description]);
 			
 			CPDistributedMessagingCenter* dmc = [CPDistributedMessagingCenter centerNamed: @"com.apple.springboard.libstatusbar"];
 			[dmc sendMessageName: @"setProperties:userInfo:" userInfo: dict];
-			NSLine();
+			//NSLine();
 			[dict release];
+		}
+		else if(SBSSpringBoardServerPort())
+		{
+			CommonLog_F("****** UNABLE TO PUSH TO LSB!");
 		}
 	}
 }
 
 - (void) resubmitContent
 {
-	NSLine();
+//	NSLine();
 	
 	NSDictionary* messages = _submittedMessages;
 	if(!messages)

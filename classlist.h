@@ -14,3 +14,5 @@ CLCLASS(UIStatusBarItemView);
 CLCLASS(UIStatusBarTimeItemView);
 
 CLCLASS(UIImage);
+CLCLASS(UIColor);
+CLCLASS(_UILegibilityImageSet);

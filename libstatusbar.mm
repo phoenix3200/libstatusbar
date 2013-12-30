@@ -31,6 +31,19 @@ HOOKDEF(id, UIStatusBarItem, itemWithType$, int type)
 	return ret;
 }
 
+HOOKDEF(id, UIStatusBarItem, itemWithType$idiom$, int type, int idiom)
+{
+	id ret = CALL_ORIG(UIStatusBarItem, itemWithType$idiom$, type, idiom);
+	
+	// construct our own custom item
+	if(ret==nil)
+	{
+		ret = [[$UIStatusBarCustomItem alloc] initWithType: type];
+	}
+	return ret;
+}
+
+
 
 @interface UIStatusBarItemView (extraSelector)
 + (UIStatusBarItemView*) createViewForItem: (UIStatusBarItem*) item withData: (void*) data actions: (int) actions foregroundStyle: (int) style;
@@ -38,11 +51,16 @@ HOOKDEF(id, UIStatusBarItem, itemWithType$, int type)
 
 UIStatusBarItemView* InitializeView(UIStatusBarLayoutManager* self, id item)
 {
+	//NSLine();
+	
 	UIStatusBarItemView* _view = [item viewForManager: self];
 	if(_view)
 	{
 		return _view;
 	}
+	
+	//NSLine();
+	
 	
 	GETVAR(UIStatusBarForegroundView*, _foregroundView);
 	int foregroundStyle = [_foregroundView foregroundStyle];
@@ -110,6 +128,7 @@ HOOKDEF(void, UIStatusBarForegroundView, _computeVisibleItems$eitherSideItems$, 
 
 HOOKDEF(id, UIStatusBarForegroundView, _computeVisibleItemsPreservingHistory$, bool preserve)
 {
+//	SelLog();
 
 	id ret = CALL_ORIG(UIStatusBarForegroundView, _computeVisibleItemsPreservingHistory$, preserve);
 	
@@ -130,6 +149,8 @@ HOOKDEF(id, UIStatusBarForegroundView, _computeVisibleItemsPreservingHistory$, b
 	for(int i=0; i<2; i++)
 	{
 		NSMutableArray* arr = [ret objectForKey: [NSNumber numberWithInt: i]];
+		//NSDesc(arr);
+		
 		
 		[layoutManagers[i] clearOverlapFromItems: arr];
 		
@@ -148,6 +169,8 @@ HOOKDEF(id, UIStatusBarForegroundView, _computeVisibleItemsPreservingHistory$, b
 				}
 			}
 		}
+		//NSDesc(arr);
+
 		if(arrWidth > edgeWidth - 1)
 		{
 			[layoutManagers[i] distributeOverlap: arrWidth - edgeWidth + 1 amongItems: arr];
@@ -164,7 +187,7 @@ HOOKDEF(UIView*, UIStatusBarLayoutManager, _viewForItem$creatingIfNecessary$, id
 {
 	if([item isKindOfClass: $UIStatusBarCustomItem])
 	{
-		//NSLine();
+	//	NSLine();
 		
 		UIStatusBarItemView* _view = InitializeView(self, item);
 		return _view;
@@ -180,7 +203,7 @@ HOOKDEF(UIView*, UIStatusBarLayoutManager, _viewForItem$, id item)
 {
 	if([item isKindOfClass: $UIStatusBarCustomItem])
 	{
-		//NSLine();
+	//	NSLine();
 		
 		UIStatusBarItemView* _view = InitializeView(self, item);
 		return _view;
@@ -214,6 +237,7 @@ HOOKDEF(NSMutableArray*, UIStatusBarLayoutManager, _itemViews)
 			}
 		}
 	}
+//	NSDesc(_itemViews);
 	
 	return _itemViews;
 }
@@ -313,6 +337,7 @@ HOOKDEF(BOOL, UIStatusBarTimeItemView, updateForNewData$actions$, void* data, in
 		notify_get_state(token, &value);
 		
 		idx = value;
+	//	NSLog(@"idx = %d", idx);
 	}
 	
 	// Fetch the current string
@@ -336,9 +361,45 @@ HOOKDEF(BOOL, UIStatusBarTimeItemView, updateForNewData$actions$, void* data, in
 @end
 */
 
+
+
+HOOKDEF(UIImage*, UIStatusBarTimeItemView, contentsImage)
+{
+	NSString* &_timeString(MSHookIvar<NSString*>(self, "_timeString"));
+
+	NSMutableString* timeString = [_timeString mutableCopy];
+	
+	CGSize size = [(UIStatusBar*)[[$UIApplication sharedApplication] statusBar] currentFrame].size;
+	float maxlen = (size.width > size.height ? size.width : size.height)*0.6;//0.65;
+	
+	// ellipsize strings if they're too long
+	if([timeString sizeWithFont: (UIFont*) [self textFont]].width > maxlen)
+	{
+		[timeString replaceCharactersInRange: (NSRange){[timeString length]-1, 1} withString: @"…"];
+		while([timeString length]>3 && [timeString sizeWithFont: (UIFont*) [self textFont]].width > maxlen)
+		{
+			[timeString replaceCharactersInRange: (NSRange){[timeString length]-2, 1} withString: @""];
+		}
+	}
+//	NSLog(@"Writing \"%@\" to statusbar %p", timeString, self);
+	
+	//svtrace(self);
+	// string swap
+	NSString* oldTimeString = _timeString;
+	_timeString = [timeString retain]; // neccessary ?
+	
+	UIImage* ret = CALL_ORIG(UIStatusBarTimeItemView, contentsImage);
+	
+	// string swap
+	_timeString = oldTimeString;
+	[timeString release];
+	
+	return ret;
+}
+
 HOOKDEF(UIImage*, UIStatusBarTimeItemView, contentsImageForStyle$, int style)
 {
-//	SelLog();
+	//SelLog();
 	
 	NSString* &_timeString(MSHookIvar<NSString*>(self, "_timeString"));
 
@@ -356,6 +417,7 @@ HOOKDEF(UIImage*, UIStatusBarTimeItemView, contentsImageForStyle$, int style)
 			[timeString replaceCharactersInRange: (NSRange){[timeString length]-2, 1} withString: @""];
 		}
 	}
+//	NSLog(@"Writing \"%@\" to statusbar", timeString);
 	
 	// string swap
 	NSString* oldTimeString = _timeString;
@@ -379,10 +441,9 @@ HOOKDEF(UIImage*, UIStatusBarTimeItemView, contentsImageForStyle$, int style)
 //_startWindowServerIfNecessary
 
 
-HOOKDEF(void, UIApplication, _startWindowServerIfNecessary)
+HOOKDEF(void, UIApplication, _reportAppLaunchFinished)
 {
-//	SelLog();
-	CALL_ORIG(UIApplication, _startWindowServerIfNecessary);
+	CALL_ORIG(UIApplication, _reportAppLaunchFinished);
 	
 	static BOOL hasAlreadyRan = NO;
 	if(hasAlreadyRan)
@@ -401,7 +462,38 @@ HOOKDEF(void, UIApplication, _startWindowServerIfNecessary)
 	// UIKit should still not exist.../yet/
 	if($SpringBoard || SBSSpringBoardServerPort())
 	{
-		[LSStatusBarClient sharedInstance];
+//		[[LSStatusBarClient sharedInstance] performSelector: @selector(updateStatusBar) withObject: nil afterDelay: 0.001f];
+	}
+//	NSLine();
+}
+
+
+HOOKDEF(void, UIApplication, _startWindowServerIfNecessary)
+{
+//	SelLog();
+	CALL_ORIG(UIApplication, _startWindowServerIfNecessary);
+	
+//	return;
+	
+	static BOOL hasAlreadyRan = NO;
+	if(hasAlreadyRan)
+	{
+		CommonLog_F("Warning: UIApplication _startWindowServerIfNecessary called twice!");
+		return;
+	}
+	else
+	{
+//		UIApp = [$UIApplication sharedApplication];
+	}
+	hasAlreadyRan = YES;
+	
+	// use this only for starting client
+	// register as client - make sure SpringBoard is running
+	// UIKit should still not exist.../yet/
+	if($SpringBoard || SBSSpringBoardServerPort())
+	{
+		[[LSStatusBarClient sharedInstance] updateStatusBar];
+		//[LSStatusBarClient sharedInstance];
 	}
 //	NSLine();
 }
@@ -433,20 +525,6 @@ HOOKDEF(void, UIApplication, removeStatusBarImageNamed$, NSString* name)
 
 //@class UIStatusBarTimeItemView;
 
-enum CFVers
-{
-	CF_NONE = 0,
-	CF_30 = 1,
-	CF_31 = 2,
-	CF_32 = 4,
-	CF_40 = 8,
-	CF_41 = 16,
-	CF_42 = 32,
-	CF_43 = 64,
-	CF_50 = 128,
-	CF_51 = 256,
-	CF_60 = 512,
-};
 
 CFVers cfvers;
 
@@ -460,6 +538,8 @@ HOOKDEF(void, SBApplication, exitedCommon)
 
 CFVers QuantizeCFVers()
 {
+	//CommonLog("CoreFoundation = %f", kCFCoreFoundationVersionNumber);
+	
 	if(kCFCoreFoundationVersionNumber == 478.47)
 	{
 		return CF_30;
@@ -500,11 +580,15 @@ CFVers QuantizeCFVers()
 	{
 		return CF_60;
 	}
-	else if(kCFCoreFoundationVersionNumber > 793.00)
+	else if(kCFCoreFoundationVersionNumber == 847.20)// && kCFCoreFoundationVersionNumber < 848.0)
 	{
-		CommonLog("CoreFoundation = %f", kCFCoreFoundationVersionNumber);
-		return CF_60;
+		return CF_70;	
 	}
+	else if(kCFCoreFoundationVersionNumber == 847.21)
+	{
+		return CF_70;
+	}
+	//else if(kCFCoreFoundationVersionNumber > 793.00)
 	else
 	{
 		CommonLog("CoreFoundation = %f", kCFCoreFoundationVersionNumber);
@@ -516,90 +600,215 @@ CFVers QuantizeCFVers()
 
 
 
+void uncaughtExceptionHandler(NSException *exception) {
+    NSLog(@"CRASH: %@", exception);
+    NSLog(@"Stack Trace: %@", [exception callStackSymbols]);
+    // Internal error reporting
+}
+
+
+void mysighandler(int sig, siginfo_t *info, void *context) {
+	void *backtraceFrames[128];
+	int frameCount = backtrace(backtraceFrames, 128);
+
+	NSLog(@"CRASH");
+	//NSLog(@"%@",[NSThread callStackSymbols]);
+	backtrace_symbols_fd(backtraceFrames, frameCount, 2);
+	exit(1);
+	// report the error
+}
+
+
+
+
+
+__attribute__((constructor)) void CrashWatcher()
+{
+	return;
+
+    NSSetUncaughtExceptionHandler(&uncaughtExceptionHandler);
+    struct sigaction mySigAction;
+    mySigAction.sa_sigaction = mysighandler;
+    mySigAction.sa_flags = SA_SIGINFO;
+    sigemptyset(&mySigAction.sa_mask);
+    sigaction(SIGQUIT, &mySigAction, NULL);
+    sigaction(SIGILL, &mySigAction, NULL);
+    sigaction(SIGTRAP, &mySigAction, NULL);
+    sigaction(SIGABRT, &mySigAction, NULL);
+    sigaction(SIGEMT, &mySigAction, NULL);
+    sigaction(SIGFPE, &mySigAction, NULL);
+    sigaction(SIGBUS, &mySigAction, NULL);
+    sigaction(SIGSEGV, &mySigAction, NULL);
+    sigaction(SIGSYS, &mySigAction, NULL);
+    sigaction(SIGPIPE, &mySigAction, NULL);
+    sigaction(SIGALRM, &mySigAction, NULL);
+    sigaction(SIGXCPU, &mySigAction, NULL);
+    sigaction(SIGXFSZ, &mySigAction, NULL);
+    
+}
+
+typedef struct {
+	BOOL itemIsEnabled[25];
+	BOOL timeString[64];
+	int gsmSignalStrengthRaw;
+	int gsmSignalStrengthBars;
+	BOOL serviceString[100];
+	BOOL serviceCrossfadeString[100];
+	BOOL serviceImages[2][100];
+	BOOL operatorDirectory[1024];
+	unsigned serviceContentType;
+	int wifiSignalStrengthRaw;
+	int wifiSignalStrengthBars;
+	unsigned dataNetworkType;
+	int batteryCapacity;
+	unsigned batteryState;
+	BOOL batteryDetailString[150];
+	int bluetoothBatteryCapacity;
+	int thermalColor;
+	unsigned thermalSunlightMode : 1;
+	unsigned slowActivity : 1;
+	unsigned syncActivity : 1;
+	BOOL activityDisplayId[256];
+	unsigned bluetoothConnected : 1;
+	unsigned displayRawGSMSignal : 1;
+	unsigned displayRawWifiSignal : 1;
+	unsigned locationIconType : 1;
+	unsigned quietModeInactive : 1;
+	unsigned tetheringConnectionCount;
+} StatusBarData;
+
+
+
 __attribute__((constructor)) void start()
 {
 //	NSLine();
 	
 	cfvers = QuantizeCFVers();
+	if(!cfvers)
+		return;
 	
 	if(cfvers > CF_50)
 	{
+		if(sandbox_check(getpid(), "mach-lookup", (sandbox_filter_type) (SANDBOX_FILTER_LOCAL_NAME | SANDBOX_CHECK_NO_REPORT), "com.apple.system.logger"))
+		{
+			return;
+		}
 		if(sandbox_check(getpid(), "mach-lookup", (sandbox_filter_type) (SANDBOX_FILTER_LOCAL_NAME | SANDBOX_CHECK_NO_REPORT), "com.apple.springboard.libstatusbar"))
 		{
 			CommonLog_F("******SANDBOX FORBADE MACH LOOKUP.  LIBSTATUSBAR MAY CRASH IN THIS PROCESS********\n");
+			TRACE_F();
+			return;
+		}
+		if(sandbox_check(getpid(), "mach-lookup", (sandbox_filter_type) (SANDBOX_FILTER_LOCAL_NAME | SANDBOX_CHECK_NO_REPORT), "com.apple.springboard.services"))
+		{
+			CommonLog_F("******SANDBOX FORBADE MACH LOOKUP.  LIBSTATUSBAR MAY CRASH IN THIS PROCESS********\n");
+			TRACE_F();
 			return;
 		}
 	}
 	
-	// get classes
-	Classes_Fetch();
+	uint64_t load_time = 0;
 	
-	[[NSAutoreleasePool alloc] init];
-	
-	// we only hook UIKit apps - used as a guard band
-	if($UIStatusBarItem)
+	PROFILE(load_time)
 	{
-		ClassCreate_UIStatusBarCustomItemView();
-		ClassCreate_UIStatusBarCustomItem();
-		{
-			HOOKCLASSMESSAGE(UIStatusBarItem, itemWithType:, itemWithType$);
-		}
+	
+		// get classes
+		Classes_Fetch();
 		
-		if(cfvers < CF_60)
+		[[NSAutoreleasePool alloc] init];
+		
+		// we only hook UIKit apps - used as a guard band
+		if($UIStatusBarItem)
 		{
-			HOOKMESSAGE(UIStatusBarForegroundView, _computeVisibleItems:eitherSideItems:, _computeVisibleItems$eitherSideItems$);
+			ClassCreate_UIStatusBarCustomItemView();
+			ClassCreate_UIStatusBarCustomItem();
+			
+			if(cfvers < CF_70)
+			{
+				HOOKCLASSMESSAGE(UIStatusBarItem, itemWithType:, itemWithType$);
+			}
+			else
+			{
+				HOOKCLASSMESSAGE(UIStatusBarItem, itemWithType:idiom:, itemWithType$idiom$);
+			}
+			
+			if(cfvers < CF_60)
+			{
+				HOOKMESSAGE(UIStatusBarForegroundView, _computeVisibleItems:eitherSideItems:, _computeVisibleItems$eitherSideItems$);
+			}
+			else
+			{
+				HOOKMESSAGE(UIStatusBarForegroundView, _computeVisibleItemsPreservingHistory:, _computeVisibleItemsPreservingHistory$);	
+			}
+			{
+				if([$UIStatusBarLayoutManager instancesRespondToSelector: @selector(_viewForItem:creatingIfNecessary:)])
+					HOOKMESSAGE(UIStatusBarLayoutManager, _viewForItem:creatingIfNecessary:, _viewForItem$creatingIfNecessary$);
+				if([$UIStatusBarLayoutManager instancesRespondToSelector: @selector(prepareEnabledItems:)])
+					HOOKMESSAGE(UIStatusBarLayoutManager, prepareEnabledItems:, prepareEnabledItems$);
+				
+				if([$UIStatusBarLayoutManager instancesRespondToSelector: @selector(_viewForItem:)])
+					HOOKMESSAGE(UIStatusBarLayoutManager, _viewForItem:, _viewForItem$);
+				if([$UIStatusBarLayoutManager instancesRespondToSelector: @selector(prepareEnabledItems:withData:actions:)])
+					HOOKMESSAGE(UIStatusBarLayoutManager, prepareEnabledItems:withData:actions:, prepareEnabledItems$withData$actions$);
+				
+				HOOKMESSAGE(UIStatusBarLayoutManager, _itemViews, _itemViews);
+				/*
+				if(cfvers >= CF_60)
+				{
+					HOOKMESSAGE(UIStatusBarLayoutManager, rectForItems:, rectForItems$);
+				}
+				*/
+			
+				HOOKMESSAGE(UIStatusBarTimeItemView, updateForNewData:actions:, updateForNewData$actions$);
+				
+				if(cfvers < CF_70)
+				{
+					HOOKMESSAGE(UIStatusBarTimeItemView, contentsImageForStyle:, contentsImageForStyle$);
+				}
+				else
+				{
+					HOOKMESSAGE(UIStatusBarTimeItemView, contentsImage, contentsImage);
+				}
+				
+			
+			}
+			
+			
+			{
+				HOOKMESSAGE(UIApplication, addStatusBarImageNamed:removeOnExit:, addStatusBarImageNamed$removeOnExit$);
+				HOOKMESSAGE(UIApplication, addStatusBarImageNamed:, addStatusBarImageNamed$);
+				HOOKMESSAGE(UIApplication, removeStatusBarImageNamed:, removeStatusBarImageNamed$);
+				HOOKCLASSMESSAGE(UIApplication, _startWindowServerIfNecessary, _startWindowServerIfNecessary);
+			//	HOOKCLASSMESSAGE(UIApplication, _reportAppLaunchFinished, _reportAppLaunchFinished);
+				
+				
+			}
+			
+			if($SpringBoard)
+			{
+				[LSStatusBarServer sharedInstance];
+				
+				GETCLASS(SBApplication);
+				HOOKMESSAGE(SBApplication, exitedCommon, exitedCommon);
+			}
+			
+			
+			
+			
+		//	[[LSStatusBarClient sharedInstance] updateStatusBar];
+			
+		//	NSLog(@"Done loading.");
+		}
+		else if(!$UIApplication)
+		{
+			CommonLog_F("Libstatusbar NOT loading on a UIKit process.");
 		}
 		else
 		{
-			HOOKMESSAGE(UIStatusBarForegroundView, _computeVisibleItemsPreservingHistory:, _computeVisibleItemsPreservingHistory$);	
-		}
-		{
-			if([$UIStatusBarLayoutManager instancesRespondToSelector: @selector(_viewForItem:creatingIfNecessary:)])
-				HOOKMESSAGE(UIStatusBarLayoutManager, _viewForItem:creatingIfNecessary:, _viewForItem$creatingIfNecessary$);
-			if([$UIStatusBarLayoutManager instancesRespondToSelector: @selector(prepareEnabledItems:)])
-				HOOKMESSAGE(UIStatusBarLayoutManager, prepareEnabledItems:, prepareEnabledItems$);
 			
-			if([$UIStatusBarLayoutManager instancesRespondToSelector: @selector(_viewForItem:)])
-				HOOKMESSAGE(UIStatusBarLayoutManager, _viewForItem:, _viewForItem$);
-			if([$UIStatusBarLayoutManager instancesRespondToSelector: @selector(prepareEnabledItems:withData:actions:)])
-				HOOKMESSAGE(UIStatusBarLayoutManager, prepareEnabledItems:withData:actions:, prepareEnabledItems$withData$actions$);
-			
-			HOOKMESSAGE(UIStatusBarLayoutManager, _itemViews, _itemViews);
-			/*
-			if(cfvers >= CF_60)
-			{
-				HOOKMESSAGE(UIStatusBarLayoutManager, rectForItems:, rectForItems$);
-			}
-			*/
-		
-			HOOKMESSAGE(UIStatusBarTimeItemView, updateForNewData:actions:, updateForNewData$actions$);
-			HOOKMESSAGE(UIStatusBarTimeItemView, contentsImageForStyle:, contentsImageForStyle$);
-		
-		}
-		
-		
-		{
-			HOOKMESSAGE(UIApplication, addStatusBarImageNamed:removeOnExit:, addStatusBarImageNamed$removeOnExit$);
-			HOOKMESSAGE(UIApplication, addStatusBarImageNamed:, addStatusBarImageNamed$);
-			HOOKMESSAGE(UIApplication, removeStatusBarImageNamed:, removeStatusBarImageNamed$);
-			HOOKCLASSMESSAGE(UIApplication, _startWindowServerIfNecessary, _startWindowServerIfNecessary);
-		}
-		
-		if($SpringBoard)
-		{
-			[LSStatusBarServer sharedInstance];
-			
-			GETCLASS(SBApplication);
-			HOOKMESSAGE(SBApplication, exitedCommon, exitedCommon);
 		}
 	}
-	else if(!$UIApplication)
-	{
-		CommonLog_F("Libstatusbar NOT loading on a UIKit process.");
-	}
-	else
-	{
-		
-	}
+	CommonLog("Took %ld us to load libstatusbar\n", load_time);
+
 }
 
