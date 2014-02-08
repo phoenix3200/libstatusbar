@@ -83,6 +83,15 @@ mach_port_t LSBServerPort()
 
 - (id) init
 {
+	/*
+	static bool reentrant = 0;
+	if(reentrant)
+	{
+		CommonLog_F("Reentrant condition detected!!!!!");
+		TRACE_F();
+	}
+	*/
+	
 	self = [super init];
 	if(self)
 	{

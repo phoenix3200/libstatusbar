@@ -588,6 +588,10 @@ CFVers QuantizeCFVers()
 	{
 		return CF_70;
 	}
+//	else if(kCFCoreFoundationVersionNumber == 847.23)
+//	{
+//		return CF_70;
+//	}
 	//else if(kCFCoreFoundationVersionNumber > 793.00)
 	else
 	{
@@ -791,13 +795,13 @@ __attribute__((constructor)) void start()
 				GETCLASS(SBApplication);
 				HOOKMESSAGE(SBApplication, exitedCommon, exitedCommon);
 			}
-			
+		//	CommonLog_F("*********** SpringBoard = %p", $SpringBoard);
 			
 			
 			
 		//	[[LSStatusBarClient sharedInstance] updateStatusBar];
 			
-		//	NSLog(@"Done loading.");
+		//	CommonLog_F("Done loading.");
 		}
 		else if(!$UIApplication)
 		{
@@ -805,7 +809,7 @@ __attribute__((constructor)) void start()
 		}
 		else
 		{
-			
+//			CommonLog_F("UIStatusBarItem is null??"); 
 		}
 	}
 	CommonLog("Took %ld us to load libstatusbar\n", load_time);
