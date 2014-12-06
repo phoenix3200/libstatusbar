@@ -2,7 +2,7 @@ TWEAK_NAME = libstatusbar
 libstatusbar_FILES = libstatusbar.mm Classes.mm \
  							LSStatusBarClient.mm LSStatusBarServer.mm \
 							UIStatusBarCustomItem.mm UIStatusBarCustomItemView.mm \
-							LSStatusBarItem.mm # Testing.mm
+							LSStatusBarItem.mm #Testing.mm
 # libstatusbar_FRAMEWORKS = UIKit
 
 libstatusbar_PRIVATE_FRAMEWORKS = AppSupport SpringboardServices

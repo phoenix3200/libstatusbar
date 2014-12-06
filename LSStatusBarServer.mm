@@ -43,6 +43,16 @@ void incrementTimer()//CFRunLoopTimerRef timer, LSStatusBarServer* self)
 	if(self)
 	{
 		_dmc = [CPDistributedMessagingCenter centerNamed: @"com.apple.springboard.libstatusbar"];
+		
+		void* handle = dlopen("/usr/lib/librocketbootstrap.dylib", RTLD_LAZY);
+		if(handle)
+		{
+			void (*rocketbootstrap_distributedmessagingcenter_apply)(CPDistributedMessagingCenter*);
+			rocketbootstrap_distributedmessagingcenter_apply = (void(*)(CPDistributedMessagingCenter*))dlsym(handle, "rocketbootstrap_distributedmessagingcenter_apply");
+			rocketbootstrap_distributedmessagingcenter_apply(_dmc);
+		}
+		
+		
 		[_dmc runServerOnCurrentThread];
 		[_dmc registerForMessageName: @"currentMessage" target: self selector: @selector(currentMessage)];
 		[_dmc registerForMessageName: @"setProperties:userInfo:" target: self selector: @selector(setProperties:userInfo:)];
@@ -373,8 +383,8 @@ void MonitorPID(NSNumber* pid)
 - (void) setState: (NSUInteger) newState
 {
 	uint64_t value = newState;
-	static int token = 0;
-	if(!token)
+	static int token = -1;
+	if(token < 0)
 	{
 		const char* notif = "libstatusbar_changed";
 		notify_register_check(notif, &token);
@@ -413,8 +423,8 @@ void MonitorPID(NSNumber* pid)
 	// check lock status
 	uint64_t locked;
 	{
-		static int token = 0;
-		if(!token)
+		static int token = -1;
+		if(token < 0)
 		{
 			notify_register_check("com.apple.springboard.lockstate", &token);
 		}
@@ -503,8 +513,8 @@ void MonitorPID(NSNumber* pid)
 	if(titleStrings && [titleStrings count])
 	{
 		uint64_t value;
-		static int token = 0;
-		if(!token)
+		static int token = -1;
+		if(token < 0)
 		{
 			notify_register_check(notif, &token);
 		}

@@ -38,6 +38,8 @@ mach_port_t LSBServerPort()
 	const char* lookup_name = "com.apple.springboard.libstatusbar";
 	
 	mach_port_t lookup_port = NULL;
+	
+	//_rocketbootstrap_look_up
 	kern_return_t err = bootstrap_look_up (bootstrap_port, lookup_name, &lookup_port);
 	if(!err)
 		return lookup_port;
@@ -57,7 +59,7 @@ mach_port_t LSBServerPort()
 	
 	if(!client)
 	{
-		if(!$SpringBoard)
+		if(!$SpringBoard && cfvers > CF_50 && cfvers < CF_70)
 		{
 			if(sandbox_check(getpid(), "mach-lookup", (sandbox_filter_type) (SANDBOX_FILTER_LOCAL_NAME | SANDBOX_CHECK_NO_REPORT), "com.apple.springboard.libstatusbar"))
 			{
@@ -97,11 +99,22 @@ mach_port_t LSBServerPort()
 	{
 		_isLocal = $SpringBoard ? YES : NO;
 		
+		
+		static int reentrantCounter = 0;
+		
+		if(reentrantCounter)
+		{
+			uintptr_t p = 0;
+			*(int*)p = 1;
+		}
+		
 		CFNotificationCenterRef darwin = CFNotificationCenterGetDarwinNotifyCenter();
 		CFNotificationCenterAddObserver(darwin, self, (CFNotificationCallback) UpdateStatusBar, (CFStringRef) @"libstatusbar_changed", NULL, NULL);
 
 //		CFNotificationCenterAddObserver(darwin, self, (CFNotificationCallback) ResubmitContent, CFSTR("SBSpringBoardDidLaunchNotification"), NULL, NULL);
 		CFNotificationCenterAddObserver(darwin, self, (CFNotificationCallback) ResubmitContent, CFSTR("LSBDidLaunchNotification"), NULL, NULL);
+		
+		reentrantCounter++;
 		
 	//	[self performSelector: @selector(updateStatusBar) withObject: nil afterDelay: 0.001f];
 	}
@@ -120,11 +133,28 @@ mach_port_t LSBServerPort()
 	{
 		_currentMessage = [[[LSStatusBarServer sharedInstance] currentMessage] retain];
 	}
-	else if(LSBServerPort())
+	else //if(LSBServerPort())
 	{
 		CPDistributedMessagingCenter* dmc = [CPDistributedMessagingCenter centerNamed: @"com.apple.springboard.libstatusbar"];
+		
+		static void (*rocketbootstrap_distributedmessagingcenter_apply)(CPDistributedMessagingCenter*) = NULL;
+		if(!rocketbootstrap_distributedmessagingcenter_apply)
+		{
+			void* handle = dlopen("/usr/lib/librocketbootstrap.dylib", RTLD_LAZY);
+			if(handle)
+			{
+				rocketbootstrap_distributedmessagingcenter_apply = (void(*)(CPDistributedMessagingCenter*))dlsym(handle, "rocketbootstrap_distributedmessagingcenter_apply");
+			}
+		}
+		if(rocketbootstrap_distributedmessagingcenter_apply)
+		{
+			NSLine();
+			rocketbootstrap_distributedmessagingcenter_apply(dmc);
+		}
+		
 		_currentMessage = [[dmc sendMessageAndReceiveReplyName: @"currentMessage" userInfo: nil] retain];
 	}
+	/*
 	else if(SBSSpringBoardServerPort())
 	{
 		CommonLog_F("****** UNABLE TO FETCH FROM LSB!");
@@ -133,14 +163,16 @@ mach_port_t LSBServerPort()
 	{
 		_currentMessage = nil;
 	}
+	*/
+	
 //	NSDesc(_currentMessage);
 }
 
 - (NSString*) titleStringAtIndex: (int) idx
 {
-	if(idx < (int)[_titleStrings count])
+	if(idx < (int)[_titleStrings count] && idx >= 0)
 	{
-	//	NSLog(@"Fetching index %d of %d", idx, (int)[_titleStrings count]);
+		NSLog(@"Fetching index %d of %d", idx, (int)[_titleStrings count]);
 		return [_titleStrings objectAtIndex: idx];
 	}
 	return nil;
@@ -405,7 +437,7 @@ mach_port_t LSBServerPort()
 		{
 			[[LSStatusBarServer sharedInstance] setProperties: properties forItem: item bundle: bundleId pid: [NSNumber numberWithInt: 0]];
 		}
-		else if(LSBServerPort())
+		else //if(LSBServerPort())
 		//else if(SBSSpringBoardServerPort())
 		{
 			NSNumber* pid = [NSNumber numberWithInt: getpid()];
@@ -431,14 +463,33 @@ mach_port_t LSBServerPort()
 			//NSLog(@"dict = %@", [dict description]);
 			
 			CPDistributedMessagingCenter* dmc = [CPDistributedMessagingCenter centerNamed: @"com.apple.springboard.libstatusbar"];
+			
+			static void (*rocketbootstrap_distributedmessagingcenter_apply)(CPDistributedMessagingCenter*) = NULL;
+			if(!rocketbootstrap_distributedmessagingcenter_apply)
+			{
+				void* handle = dlopen("/usr/lib/librocketbootstrap.dylib", RTLD_LAZY);
+				if(handle)
+				{
+					rocketbootstrap_distributedmessagingcenter_apply = (void(*)(CPDistributedMessagingCenter*))dlsym(handle, "rocketbootstrap_distributedmessagingcenter_apply");
+				}
+			}
+			if(rocketbootstrap_distributedmessagingcenter_apply)
+			{
+				NSLine();
+				rocketbootstrap_distributedmessagingcenter_apply(dmc);
+			}
+			
+			
 			[dmc sendMessageName: @"setProperties:userInfo:" userInfo: dict];
 			//NSLine();
 			[dict release];
 		}
+		/*
 		else if(SBSSpringBoardServerPort())
 		{
 			CommonLog_F("****** UNABLE TO PUSH TO LSB!");
 		}
+		*/
 	}
 }
 

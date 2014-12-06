@@ -39,7 +39,6 @@ UIImage* UIStatusBarCustomItemView$contentsImageForStyle$(UIStatusBarCustomItemV
 	}
 	*/
 	
-//	NSBundle* kitbundle = [NSBundle bundleWithPath: @"/System/Library/Frameworks/UIKit.framework"];
 	
 
 	//NSBundle* bundle
@@ -48,8 +47,13 @@ UIImage* UIStatusBarCustomItemView$contentsImageForStyle$(UIStatusBarCustomItemV
 	{
 		NSString* styleStr = isBlack ? @"Black" : @"Silver";
 		NSString *imageName = [NSString stringWithFormat: @"%@_%@.png", styleStr, itemName];
-	//	ret = [UIImage imageNamed: imageName inBundle: kitbundle];
+	//	ret = [$UIImage imageNamed: imageName inBundle: kitbundle];
 		ret = [$UIImage kitImageNamed: imageName];
+		if(!ret)
+		{
+			NSBundle* kitbundle = [NSBundle bundleWithPath: @"/System/Library/Frameworks/UIKit.framework"];
+			ret = [$UIImage imageNamed: imageName inBundle: kitbundle];
+		}
 	}
 	
 	if(!ret) // try iOS 5 naming convention
@@ -75,8 +79,13 @@ UIImage* UIStatusBarCustomItemView$contentsImageForStyle$(UIStatusBarCustomItemV
 		//isBlack ? @"WhiteOnBlackEtch" : @"ColorOnGrayShadow";
 		NSString *imageName = [NSString stringWithFormat: @"%@_%@.png", styleStr, itemName];
 		NSLog(@"searching for image named %@", imageName);
-//		ret = [UIImage imageNamed: imageName inBundle: kitbundle];
+//		ret = [$UIImage imageNamed: imageName inBundle: kitbundle];
 		ret = [$UIImage kitImageNamed: imageName];
+		if(!ret)
+		{
+			NSBundle* kitbundle = [NSBundle bundleWithPath: @"/System/Library/Frameworks/UIKit.framework"];
+			ret = [$UIImage imageNamed: imageName inBundle: kitbundle];
+		}
 	}
 	
 	// try SB folder naming convention
@@ -157,7 +166,25 @@ _UILegibilityImageSet* UIStatusBarCustomItemView$contentsImage(UIStatusBarCustom
 	bool isLockscreen = [fs isKindOfClass: objc_getClass("UIStatusBarLockScreenForegroundStyleAttributes")];
 	
 	UIImage* image_color = [$UIImage kitImageNamed: [NSString stringWithFormat: @"%@_%@_Color", isLockscreen?  @"LockScreen" : isBlack ? @"Black" : @"White", itemName]];
-	UIImage* image_base = image_color ? 0 : [$UIImage kitImageNamed: expandedName_default];
+	if(!image_color)
+	{
+		NSBundle* kitbundle = [NSBundle bundleWithPath: @"/System/Library/Frameworks/UIKit.framework"];
+		image_color = [$UIImage imageNamed: [NSString stringWithFormat: @"%@_%@_Color", isLockscreen?  @"LockScreen" : isBlack ? @"Black" : @"White", itemName] inBundle: kitbundle];
+	}
+	
+	UIImage* image_base = 0;
+	if(!image_color)
+	{
+		image_base = [$UIImage kitImageNamed: expandedName_default];
+
+		if(!image_base)
+		{
+			NSBundle* kitbundle = [NSBundle bundleWithPath: @"/System/Library/Frameworks/UIKit.framework"];
+			image_base = [$UIImage imageNamed: expandedName_default inBundle: kitbundle];
+		}
+	}
+	
+	
 	
 	UIImage* image = image_color;
 	if(!image && image_base)

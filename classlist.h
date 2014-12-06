@@ -6,6 +6,7 @@ CLCLASS(UIStatusBarLayoutManager);
 CLCLASS(UIApplication);
 CLCLASS(UIStatusBarServer);
 CLCLASS(SpringBoard);
+CLCLASS(UIScreen);
 
 CLCLASS(UIStatusBarCustomItemView);
 CLCLASS(UIStatusBarCustomItem);

@@ -75,6 +75,9 @@ enum CFVers
 	CF_51 = 256,
 	CF_60 = 512,
 	CF_70 = 1024,
+	CF_71 = 2048,
+	CF_80 = 4096,
+	CF_81 = 8192
 };
 
 extern CFVers cfvers;

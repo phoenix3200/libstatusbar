@@ -1,6 +1,6 @@
 
 
-//#define TESTING
+#define TESTING
 
 #import "common.h"
 #import "defines.h"
@@ -14,20 +14,21 @@ LSStatusBarItem* playItem;
 
 void addPlay()
 {
-	SelLog();
+	NSLine();
 	
 	playItem =  [[LSStatusBarItem alloc] initWithIdentifier: @"libstatusbar.Play" alignment: StatusBarAlignmentLeft];
 	playItem.imageName = @"3_WifiBars";//Play";
 	
 	
-	[[$UIApplication sharedApplication] addStatusBarImageNamed: @"Pause"];//Siri"];
+	[[$UIApplication sharedApplication] addStatusBarImageNamed: @"Siri"];//Siri"];
 	[[$UIApplication sharedApplication] addStatusBarImageNamed: @"Lightning"];//Siri"];
 	
 }
 
 void playToBT()
 {
-	SelLog();
+	NSLine();
+	
 	playItem.imageName = @"Bluetooth";//Siri";
 	
 //	[[$UIApplication sharedApplication] removeStatusBarImageNamed: @"Pause"];//Siri"];
@@ -42,20 +43,23 @@ LSStatusBarItem* centerItem2;
 
 void addCenterText()
 {
-	SelLog();
+	NSLine();
 	
 	centerItem = [[LSStatusBarItem alloc] initWithIdentifier: @"libstatusbar.Center" alignment: StatusBarAlignmentCenter];
+	[centerItem setHidesTime: YES];
 	centerItem.titleString = @"Test string";
 
-	centerItem2 = [[LSStatusBarItem alloc] initWithIdentifier: @"libstatusbar.Center2" alignment: StatusBarAlignmentCenter];
-	centerItem2.titleString = @"is a reallly long test string";
+//	centerItem2 = [[LSStatusBarItem alloc] initWithIdentifier: @"libstatusbar.Center2" alignment: StatusBarAlignmentCenter];
+//	centerItem2.titleString = @"is a reallly long test string";
+	
+	NSLine();
 }
 
 void modifyCenterText()
 {
 	//[playItem release];
 	
-	centerItem2.titleString = @"is an even longer test string to fill the screen";
+//	centerItem2.titleString = @"is an even longer test string to fill the screen";
 }
 
 
@@ -96,6 +100,8 @@ void DelayedTesting()
 
 __attribute__((constructor)) void TestingStart()
 {
+	NSLine();
+	
 	//GETCLASS(SpringBoard);
 	GETCLASS(SpringBoard);
 	if($SpringBoard)

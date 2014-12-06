@@ -125,6 +125,13 @@ HOOKDEF(void, UIStatusBarForegroundView, _computeVisibleItems$eitherSideItems$, 
 	CALL_ORIG(UIStatusBarForegroundView, _computeVisibleItems$eitherSideItems$, visibleItems,  eitherSideItems);
 }
 
+@interface UIStatusBarLayoutManager (missing)
+- (CGFloat) sizeNeededForItems: (NSArray*) items;
+- (CGFloat) sizeNeededForItem: (UIStatusBarItem*) item;
+- (CGFloat) _positionAfterPlacingItemView: (UIStatusBarItemView*) view startPosition: (CGFloat) position firstView: (BOOL) isFirst;
+
+- (CGRect) _frameForItemView:(id)itemView startPosition:(CGFloat)position firstView:(BOOL)view;
+@end
 
 HOOKDEF(id, UIStatusBarForegroundView, _computeVisibleItemsPreservingHistory$, bool preserve)
 {
@@ -135,11 +142,16 @@ HOOKDEF(id, UIStatusBarForegroundView, _computeVisibleItemsPreservingHistory$, b
 	UIStatusBarLayoutManager * (&layoutManagers)[3](MSHookIvar<UIStatusBarLayoutManager*[3]>(self, "_layoutManagers"));
 	
 	float boundsWidth = [self bounds].size.width;
-	float centerWidth;
+	CGFloat centerWidth;
 	{
 		
 		NSMutableArray* center = [ret objectForKey: [NSNumber numberWithInt: 2]];
-		centerWidth = [layoutManagers[2] widthNeededForItems: center];
+		
+		//centerWidth = ((CGFloat(*)(...)) objc_msgSend)(layoutManagers[2], (cfvers > CF_70) ? @selector(sizeNeededForItems:) : @selector(widthNeededForItems:), center);
+		
+		//centerWidth = [layoutManagers[2] widthNeededForItems: center];
+		centerWidth = (cfvers >= CF_71) ? [layoutManagers[2] sizeNeededForItems: center] : [layoutManagers[2] widthNeededForItems: center];
+		
 //		CommonLog("Center width = %f", centerWidth);
 	}
 	
@@ -154,14 +166,17 @@ HOOKDEF(id, UIStatusBarForegroundView, _computeVisibleItemsPreservingHistory$, b
 		
 		[layoutManagers[i] clearOverlapFromItems: arr];
 		
-		float arrWidth = [layoutManagers[i] widthNeededForItems: arr];
+		//float arrWidth = [layoutManagers[i] widthNeededForItems: arr];
+		CGFloat arrWidth = (cfvers >= CF_71) ? [layoutManagers[i] sizeNeededForItems: arr] : [layoutManagers[i] widthNeededForItems: arr];
+		
 		
 		for(UIStatusBarCustomItem* item in customItems[i])
 		{
 			NSNumber* visible = [[item properties] objectForKey: @"visible"];
 			if(!visible || [visible boolValue])
 			{
-				float itemWidth = [layoutManagers[i] widthNeededForItem: item];
+				float itemWidth = (cfvers >= CF_71) ? [layoutManagers[i] sizeNeededForItem: item] : [layoutManagers[i] widthNeededForItem: item];
+				//float itemWidth = [layoutManagers[i] widthNeededForItem: item];
 				if(arrWidth + itemWidth < edgeWidth + 4)
 				{
 					[arr addObject: item];
@@ -254,13 +269,29 @@ void PrepareEnabledItemsCommon(UIStatusBarLayoutManager* self)
 		if([view superview] == nil)
 		{
 			[view setVisible: NO];
-			[view setFrame: (CGRect) {{0.0f, 0.0f}, [self _frameForItemView: view startPosition: startPosition].size}];
+			if(cfvers >= CF_71)
+			{
+				[view setFrame: (CGRect) {{0.0f, 0.0f}, [self _frameForItemView: view startPosition: startPosition firstView: YES].size}];
+			}
+			else
+			{
+				[view setFrame: (CGRect) {{0.0f, 0.0f}, [self _frameForItemView: view startPosition: startPosition].size}];
+			}
+			
 			[_foregroundView addSubview: view];
 		}
 		int type = [[view item] type];
 		if(type)
 		{
-			startPosition = [self _positionAfterPlacingItemView: view startPosition: startPosition];
+			if(cfvers >= CF_71)
+			{
+				startPosition = [self _positionAfterPlacingItemView: view startPosition: startPosition firstView: YES];
+			}
+			else
+			{
+				startPosition = [self _positionAfterPlacingItemView: view startPosition: startPosition];
+			}
+			
 		}
 	}
 }
@@ -363,14 +394,69 @@ HOOKDEF(BOOL, UIStatusBarTimeItemView, updateForNewData$actions$, void* data, in
 
 
 
+
+/*
+- (CGRect)boundsRotatedWithStatusBar
+{
+    static BOOL isNotRotatedBySystem;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        BOOL OSIsBelowIOS8 = [[[UIDevice currentDevice] systemVersion] floatValue] < 8.0;
+        BOOL SDKIsBelowIOS8 = floor(NSFoundationVersionNumber) <= NSFoundationVersionNumber_iOS_7_1;
+        isNotRotatedBySystem = OSIsBelowIOS8 || SDKIsBelowIOS8;
+    });
+
+    BOOL needsToRotate = isNotRotatedBySystem && UIInterfaceOrientationIsLandscape([UIApplication sharedApplication].statusBarOrientation);
+    if(needsToRotate)
+    {
+        CGRect screenBounds = [self bounds];
+        CGRect bounds = screenBounds;
+        bounds.size.width = screenBounds.size.height;
+        bounds.size.height = screenBounds.size.width;
+        return bounds;
+    }
+    else
+    {
+        return [self bounds];
+    }
+}
+
+
+*/
+
 HOOKDEF(UIImage*, UIStatusBarTimeItemView, contentsImage)
 {
 	NSString* &_timeString(MSHookIvar<NSString*>(self, "_timeString"));
 
 	NSMutableString* timeString = [_timeString mutableCopy];
 	
-	CGSize size = [(UIStatusBar*)[[$UIApplication sharedApplication] statusBar] currentFrame].size;
-	float maxlen = (size.width > size.height ? size.width : size.height)*0.6;//0.65;
+	//CGSize size = [(UIStatusBar*)[[$UIApplication sharedApplication] statusBar] currentFrame].size;
+	float maxlen;// = ((size.width > size.height) ? size.width : size.height)*0.6;//0.65;
+	
+	{
+		CGSize screenSz = [[$UIScreen mainScreen] bounds].size;
+		if(cfvers < CF_80)
+		{
+			maxlen = screenSz.width * 0.6f;
+		}
+		else if (UIInterfaceOrientationIsPortrait([[$UIApplication sharedApplication] statusBarOrientation]))
+		{
+			maxlen = screenSz.width * 0.6f;
+		}
+		else
+		{
+			maxlen = screenSz.height * 0.6f;
+		}
+	}
+	
+	/*
+	if(!maxlen)
+	{
+		maxlen = [[$UIScreen mainScreen] bounds].size.width * 0.6f;
+	}
+	*/
+	
+	NSLog(@"maxlen = %f", maxlen);
 	
 	// ellipsize strings if they're too long
 	if([timeString sizeWithFont: (UIFont*) [self textFont]].width > maxlen)
@@ -406,7 +492,12 @@ HOOKDEF(UIImage*, UIStatusBarTimeItemView, contentsImageForStyle$, int style)
 	NSMutableString* timeString = [_timeString mutableCopy];
 	
 	CGSize size = [(UIStatusBar*)[[$UIApplication sharedApplication] statusBar] currentFrame].size;
-	float maxlen = (size.width > size.height ? size.width : size.height)*0.6;//0.65;
+	float maxlen = ((size.width > size.height) ? size.width : size.height)*0.6;//0.65;
+	
+	if(!maxlen)
+	{
+		maxlen = [[$UIScreen mainScreen] bounds].size.width * 0.6f;
+	}
 	
 	// ellipsize strings if they're too long
 	if([timeString sizeWithFont: (UIFont*) [self textFont]].width > maxlen)
@@ -538,7 +629,7 @@ HOOKDEF(void, SBApplication, exitedCommon)
 
 CFVers QuantizeCFVers()
 {
-	//CommonLog("CoreFoundation = %f", kCFCoreFoundationVersionNumber);
+	CommonLog_F("CoreFoundation = %f", kCFCoreFoundationVersionNumber);
 	
 	if(kCFCoreFoundationVersionNumber == 478.47)
 	{
@@ -588,6 +679,27 @@ CFVers QuantizeCFVers()
 	{
 		return CF_70;
 	}
+	else if(kCFCoreFoundationVersionNumber == 847.26)
+	{
+		return CF_71;
+	}
+	else if(kCFCoreFoundationVersionNumber == 847.27)
+	{
+		return CF_71;
+	}
+	else if(kCFCoreFoundationVersionNumber == 1140.10)
+	{
+		return CF_80;
+	}
+	else if(kCFCoreFoundationVersionNumber == 1141.14)
+	{
+		return CF_81;
+	}
+	else if(kCFCoreFoundationVersionNumber == 1141.16)
+	{
+		return CF_81;
+	}
+	
 //	else if(kCFCoreFoundationVersionNumber == 847.23)
 //	{
 //		return CF_70;
@@ -595,7 +707,7 @@ CFVers QuantizeCFVers()
 	//else if(kCFCoreFoundationVersionNumber > 793.00)
 	else
 	{
-		CommonLog("CoreFoundation = %f", kCFCoreFoundationVersionNumber);
+		CommonLog_F("CoreFoundation = %f", kCFCoreFoundationVersionNumber);
 	}
 	
 	return CF_NONE;
@@ -691,7 +803,7 @@ __attribute__((constructor)) void start()
 	if(!cfvers)
 		return;
 	
-	if(cfvers > CF_50)
+	if(cfvers > CF_50 && cfvers < CF_70)
 	{
 		if(sandbox_check(getpid(), "mach-lookup", (sandbox_filter_type) (SANDBOX_FILTER_LOCAL_NAME | SANDBOX_CHECK_NO_REPORT), "com.apple.system.logger"))
 		{
