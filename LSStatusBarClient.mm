@@ -203,7 +203,7 @@ mach_port_t LSBServerPort()
 	}
 	*/
 	
-	int keyidx = (cfvers >= CF_70) ? 32 : 24;
+	int keyidx = (cfvers >= CF_70) ? ((cfvers >= CF_90) ? 64 : 32) : 24;
 	
 	//NSDesc(_currentMessage);
 	
