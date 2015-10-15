@@ -699,6 +699,10 @@ CFVers QuantizeCFVers()
 	{
 		return CF_81;
 	}
+	else if(kCFCoreFoundationVersionNumber == 1240.10)
+	{
+		return CF_90;
+	}
 	
 //	else if(kCFCoreFoundationVersionNumber == 847.23)
 //	{
