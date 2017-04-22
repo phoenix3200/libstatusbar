@@ -46,7 +46,7 @@ void addCenterText()
 	NSLine();
 	
 	centerItem = [[LSStatusBarItem alloc] initWithIdentifier: @"libstatusbar.Center" alignment: StatusBarAlignmentCenter];
-	[centerItem setHidesTime: YES];
+	//[centerItem setHidesTime: YES];
 	centerItem.titleString = @"Test string";
 
 //	centerItem2 = [[LSStatusBarItem alloc] initWithIdentifier: @"libstatusbar.Center2" alignment: StatusBarAlignmentCenter];
@@ -58,8 +58,9 @@ void addCenterText()
 void modifyCenterText()
 {
 	//[playItem release];
-	
-//	centerItem2.titleString = @"is an even longer test string to fill the screen";
+	centerItem2 = [[LSStatusBarItem alloc] initWithIdentifier: @"libstatusbar.Center2" alignment: StatusBarAlignmentCenter];
+
+	centerItem2.titleString = @"is an even longer test string to fill the screen";
 }
 
 
@@ -74,7 +75,7 @@ void DelayedTesting()
 			CFRunLoopAddTimer(CFRunLoopGetMain(), waitTimer, kCFRunLoopCommonModes);
 		}
 		{
-			float delay = 20.0f;
+			float delay = 12.0f;
 			CFRunLoopTimerCallBack callback = (CFRunLoopTimerCallBack) playToBT;
 		
 			CFRunLoopTimerRef waitTimer = CFRunLoopTimerCreate(kCFAllocatorDefault, CFAbsoluteTimeGetCurrent()+delay, 0.0f, 0, 0, callback, NULL);
@@ -89,7 +90,7 @@ void DelayedTesting()
 		}
 		
 		{
-			float delay = 30.0f;
+			float delay = 16.0f;
 			CFRunLoopTimerCallBack callback = (CFRunLoopTimerCallBack) modifyCenterText;
 		
 			CFRunLoopTimerRef waitTimer = CFRunLoopTimerCreate(kCFAllocatorDefault, CFAbsoluteTimeGetCurrent()+delay, 0.0f, 0, 0, callback, NULL);

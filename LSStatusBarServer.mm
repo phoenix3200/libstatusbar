@@ -75,7 +75,7 @@ void incrementTimer()//CFRunLoopTimerRef timer, LSStatusBarServer* self)
 
 - (NSMutableDictionary*) currentMessage
 {
-	return _currentMessage;
+	return [_currentMessage copy];
 }
 
 - (void) postChanged

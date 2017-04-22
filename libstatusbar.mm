@@ -311,12 +311,14 @@ HOOKDEF(BOOL, UIStatusBarLayoutManager, prepareEnabledItems$, BOOL* items)
 
 HOOKDEF(BOOL, UIStatusBarLayoutManager, prepareEnabledItems$withData$actions$, BOOL* items, void* data, int actions)
 {
+	NSLine();
 //	SelLog();
 	BOOL ret = CALL_ORIG(UIStatusBarLayoutManager, prepareEnabledItems$withData$actions$, items, data, actions);
 	
 	// the default function didn't refresh...let's refresh anyways
 	if(ret==NO)
 	{
+		NSLine();
 		PrepareEnabledItemsCommon(self);
 	}
 	return YES;
@@ -426,13 +428,29 @@ HOOKDEF(BOOL, UIStatusBarTimeItemView, updateForNewData$actions$, void* data, in
 
 HOOKDEF(UIImage*, UIStatusBarTimeItemView, contentsImage)
 {
+	NSLine();
+	
+	
+	//	return;
+
+	
 	NSString* &_timeString(MSHookIvar<NSString*>(self, "_timeString"));
 
 	NSMutableString* timeString = [_timeString mutableCopy];
 	
+	NSDesc([self textFont]);
+	NSDesc(timeString);
+	UIFont* font = [self textFont];
+	if(!font || !timeString)
+	{
+		NSLine();
+		return CALL_ORIG(UIStatusBarTimeItemView, contentsImage);
+	}
+	
 	//CGSize size = [(UIStatusBar*)[[$UIApplication sharedApplication] statusBar] currentFrame].size;
 	float maxlen;// = ((size.width > size.height) ? size.width : size.height)*0.6;//0.65;
 	
+	NSLine();
 	{
 		CGSize screenSz = [[$UIScreen mainScreen] bounds].size;
 		if(cfvers < CF_80)
@@ -448,7 +466,7 @@ HOOKDEF(UIImage*, UIStatusBarTimeItemView, contentsImage)
 			maxlen = screenSz.height * 0.6f;
 		}
 	}
-	
+
 	/*
 	if(!maxlen)
 	{
@@ -458,15 +476,22 @@ HOOKDEF(UIImage*, UIStatusBarTimeItemView, contentsImage)
 	
 	NSLog(@"maxlen = %f", maxlen);
 	
+	
+	NSLine();
+	
 	// ellipsize strings if they're too long
 	if([timeString sizeWithFont: (UIFont*) [self textFont]].width > maxlen)
 	{
+		NSLine();
+
 		[timeString replaceCharactersInRange: (NSRange){[timeString length]-1, 1} withString: @"…"];
 		while([timeString length]>3 && [timeString sizeWithFont: (UIFont*) [self textFont]].width > maxlen)
 		{
 			[timeString replaceCharactersInRange: (NSRange){[timeString length]-2, 1} withString: @""];
 		}
 	}
+	NSLine();
+
 //	NSLog(@"Writing \"%@\" to statusbar %p", timeString, self);
 	
 	//svtrace(self);
@@ -474,11 +499,17 @@ HOOKDEF(UIImage*, UIStatusBarTimeItemView, contentsImage)
 	NSString* oldTimeString = _timeString;
 	_timeString = [timeString retain]; // neccessary ?
 	
+	NSLine();
+
 	UIImage* ret = CALL_ORIG(UIStatusBarTimeItemView, contentsImage);
+
+	NSLine();
 	
 	// string swap
 	_timeString = oldTimeString;
 	[timeString release];
+
+	NSLine();
 	
 	return ret;
 }
@@ -699,6 +730,22 @@ CFVers QuantizeCFVers()
 	{
 		return CF_81;
 	}
+	else if(kCFCoreFoundationVersionNumber == 1142.16)
+	{
+		return CF_82;
+	}
+	else if(kCFCoreFoundationVersionNumber == 1144.17)
+	{
+		return CF_83;
+	}
+	else if(kCFCoreFoundationVersionNumber == 1145.15)
+	{
+		return CF_84;
+	}
+	else if(kCFCoreFoundationVersionNumber == 1240.10)
+	{
+		return CF_90;
+	}
 	
 //	else if(kCFCoreFoundationVersionNumber == 847.23)
 //	{
@@ -707,7 +754,7 @@ CFVers QuantizeCFVers()
 	//else if(kCFCoreFoundationVersionNumber > 793.00)
 	else
 	{
-		CommonLog_F("CoreFoundation = %f", kCFCoreFoundationVersionNumber);
+		CommonLog_F("Could not match CoreFoundation = %f", kCFCoreFoundationVersionNumber);
 	}
 	
 	return CF_NONE;

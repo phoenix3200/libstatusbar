@@ -203,7 +203,12 @@ mach_port_t LSBServerPort()
 	}
 	*/
 	
-	int keyidx = (cfvers >= CF_70) ? 32 : 24;
+	// *** 
+	
+	// iOS 9: 0x22 = 34 types
+	
+	
+	int keyidx = (cfvers >= CF_90) ? 34 : (cfvers >= CF_70) ? 32 : 24;
 	
 	//NSDesc(_currentMessage);
 	
@@ -335,7 +340,8 @@ mach_port_t LSBServerPort()
 {
 	if(!$UIApplication)
 		return;
-	
+
+//	NSLine();	
 //	SelLog();
 	
 	[self retrieveCurrentMessage];
@@ -353,8 +359,24 @@ mach_port_t LSBServerPort()
 			UIStatusBarForegroundView* _foregroundView = MSHookIvar<UIStatusBarForegroundView*>(sb, "_foregroundView");
 			if(_foregroundView)
 			{
-				//NSLine();
-				[sb forceUpdateData: NO];
+				NSLine();
+				if(cfvers >= CF_90)
+				{
+					// reapply _currentData.  actions = 1 does...??
+					id &_currentData(MSHookIvar<id>(_foregroundView, "_currentData"));
+					id cd = [_currentData retain];
+					//_currentData = nil;
+					[_foregroundView _setStatusBarData: cd actions: 1 animated: NO];
+					
+					[cd release];
+					
+					
+					//[_foregroundView reflowItemViewsForgettingEitherSideItemHistory];
+				}
+				else
+				{
+					[sb forceUpdateData: NO]; // not animated
+				}
 				//NSLine();
 				
 				if(_isLocal)
@@ -370,7 +392,18 @@ mach_port_t LSBServerPort()
 						if(listview)
 						{
 							id _statusBar = MSHookIvar<id>(listview, "_statusBar");
-							[_statusBar forceUpdateData: NO];
+							if(cfvers >= CF_90)
+							{
+								UIStatusBarForegroundView* _fv = MSHookIvar<UIStatusBarForegroundView*>(_statusBar, "_foregroundView");
+								id &_currentData(MSHookIvar<id>(_fv, "_currentData"));
+								id cd = [_currentData retain];
+								[_fv _setStatusBarData: cd actions: 1 animated: NO];
+								[cd release];
+							}
+							else
+							{
+								[_statusBar forceUpdateData: NO];
+							}
 						}
 					}
 					
@@ -390,8 +423,20 @@ mach_port_t LSBServerPort()
 								// forceUpdateData: animated: doesn't work if statusbar._inProcessProvider = 1
 								// bypass and directly do it.
 								
-								void* &_currentRawData(MSHookIvar<void*>(_statusBar, "_currentRawData"));
-								[_statusBar forceUpdateToData: &_currentRawData animated: NO];
+								if(cfvers >= CF_90)
+								{
+									UIStatusBarForegroundView* _fv = MSHookIvar<UIStatusBarForegroundView*>(_statusBar, "_foregroundView");
+									id &_currentData(MSHookIvar<id>(_fv, "_currentData"));
+									id cd = [_currentData retain];
+									[_fv _setStatusBarData: cd actions: 1 animated: NO];
+									[cd release];
+								}
+								else
+								{
+									
+									void* &_currentRawData(MSHookIvar<void*>(_statusBar, "_currentRawData"));
+									[_statusBar forceUpdateToData: &_currentRawData animated: NO];
+								}
 								
 							}
 						}
